@@ -76,7 +76,7 @@ void CDVDevice::FTDI_Error(const char *where, FT_STATUS status) const
 		std::cerr << "device not found";
 		break;
 	case FT_DEVICE_NOT_OPENED:
-		std::cerr << "device not opne";
+		std::cerr << "device not opened";
 		break;
 	case FT_IO_ERROR:
 		std::cerr << "io error";
@@ -491,7 +491,8 @@ bool CDVDevice::GetResponse(SDV_Packet &packet)
 
 	bytesLeft = ntohs(packet.header.payload_length);
     if (bytesLeft > 1 + int(sizeof(packet.payload))) {
-        std::cout << "AMBEserver: Serial payload exceeds buffer size: " << int(bytesLeft) << std::endl;
+        std::cerr << "AMBEserver: Serial payload exceeds buffer size: " << int(bytesLeft) << std::endl;
+        FT_Purge(ftHandle, FT_PURGE_RX);
         return true;
     }
 
@@ -514,8 +515,7 @@ void CDVDevice::AddPacket(const std::shared_ptr<CTranscoderPacket> packet)
 	auto size = input_queue.push(packet);
 	if (size > 200)
 	{
-		std::cerr << ((type==Encoding::dstar) ? "DStar" : "DMR/YSF") << " inQ size is overflowing! Shutting down..." << std::endl;
-		raise(SIGINT);
+		std::cerr << ((type==Encoding::dstar) ? "DStar" : "DMR/YSF") << " inQ size=" << size << ", dropping packet" << std::endl;
 	}
 }
 

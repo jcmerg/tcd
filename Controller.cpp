@@ -380,7 +380,10 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 #else
 	dmrsf_device->AddPacket(packet);
 #endif
-	p25vocoder.encode_4400((int16_t*)packet->GetAudioSamples(), imbe);
+	{
+		std::lock_guard<std::mutex> lock(p25vocoder_mux);
+		p25vocoder.encode_4400((int16_t*)packet->GetAudioSamples(), imbe);
+	}
 	packet->SetP25Data(imbe);
 	packet->SetUSRPData((int16_t*)packet->GetAudioSamples());
 }
@@ -480,7 +483,10 @@ void CController::AudiotoIMBE(std::shared_ptr<CTranscoderPacket> packet)
 {
 	uint8_t imbe[11];
 
-	p25vocoder.encode_4400((int16_t *)packet->GetAudioSamples(), imbe);
+	{
+		std::lock_guard<std::mutex> lock(p25vocoder_mux);
+		p25vocoder.encode_4400((int16_t *)packet->GetAudioSamples(), imbe);
+	}
 	packet->SetP25Data(imbe);
 	// we might be all done...
 	send_mux.lock();
@@ -491,7 +497,10 @@ void CController::AudiotoIMBE(std::shared_ptr<CTranscoderPacket> packet)
 void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 {
 	int16_t tmp[160] = { 0 };
-	p25vocoder.decode_4400(tmp, (uint8_t*)packet->GetP25Data());
+	{
+		std::lock_guard<std::mutex> lock(p25vocoder_mux);
+		p25vocoder.decode_4400(tmp, (uint8_t*)packet->GetP25Data());
+	}
 	packet->SetAudioSamples(tmp, false);
 	dstar_device->AddPacket(packet);
 	codec2_queue.push(packet);
@@ -600,11 +609,19 @@ void CController::ProcessUSRPThread()
 
 void CController::SendToReflector(std::shared_ptr<CTranscoderPacket> packet)
 {
-	// send the packet over the socket
-	while (tcClient.Send(packet->GetTCPacket()))
+	constexpr int max_retries = 5;
+	for (int attempt = 0; attempt < max_retries; ++attempt)
 	{
+		if (!tcClient.Send(packet->GetTCPacket()))
+		{
+			packet->Sent();
+			return;
+		}
+		std::cerr << "SendToReflector: send failed, attempt " << (attempt + 1) << "/" << max_retries << std::endl;
 		tcClient.ReConnect();
+		std::this_thread::sleep_for(std::chrono::milliseconds(100 * (1 << attempt)));
 	}
+	std::cerr << "SendToReflector: dropping packet after " << max_retries << " retries" << std::endl;
 	packet->Sent();
 }
 
