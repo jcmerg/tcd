@@ -83,8 +83,8 @@ COPY --from=md380-builder /build/md380_vocoder_dynarmic/md380_vocoder.h /usr/loc
 
 # Clone tcd and urfd (tcd has symlinks to urfd sources)
 WORKDIR /build
-RUN git clone --depth 1 https://github.com/n7tae/tcd.git \
-    && git clone --depth 1 https://github.com/nostar/urfd.git
+RUN git clone --depth 1 https://github.com/jcmerg/tcd.git \
+    && git clone --depth 1 https://github.com/jcmerg/urfd.git
 
 WORKDIR /build/tcd
 RUN cp config/* .
