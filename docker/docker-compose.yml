@@ -1,0 +1,15 @@
+services:
+  tcd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tcd:latest
+    container_name: tcd
+    network_mode: host
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - ./tcd.ini:/etc/tcd/tcd.ini:ro
+      - /sys:/sys
+    devices:
+      - /dev/bus/usb:/dev/bus/usb

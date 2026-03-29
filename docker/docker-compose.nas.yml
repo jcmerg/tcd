@@ -1,0 +1,12 @@
+services:
+  tcd:
+    image: tcd:latest
+    container_name: tcd
+    network_mode: host
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /volume1/docker/tcd/tcd.ini:/etc/tcd/tcd.ini:ro
+      - /sys:/sys
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
