@@ -49,6 +49,7 @@ bool CController::Start()
 {
 	usrp_rx_num = calcNumerator(g_Conf.GetGain(EGainType::usrprx));
 	usrp_tx_num = calcNumerator(g_Conf.GetGain(EGainType::usrptx));
+	m_agc.Configure(g_Conf.GetAGCEnabled(), g_Conf.GetAGCTarget(), g_Conf.GetAGCAttack(), g_Conf.GetAGCRelease(), g_Conf.GetAGCMaxGain());
 
 	if (InitVocoders() || tcClient.Open(g_Conf.GetAddress(), g_Conf.GetTCMods(), g_Conf.GetPort()))
 	{
@@ -481,16 +482,16 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		if (packet->GetCodecIn() == ECodecType::c2_1600)
 		{
-			// we've already calculated the audio in the previous packet
-			// copy the audio from local audio store
-			packet->SetAudioSamples(audio_store[packet->GetModule()], false);
+			int16_t tmp[160];
+			memcpy(tmp, audio_store[packet->GetModule()], sizeof(tmp));
+			m_agc.Process(tmp, 160, packet->GetStreamId());
+			packet->SetAudioSamples(tmp, false);
 		}
 		else /* codec_in is ECodecType::c2_3200 */
 		{
 			int16_t tmp[160];
-			// decode the second 8 data bytes
-			// and put it in the packet
 			c2_32[packet->GetModule()]->codec2_decode(tmp, packet->GetM17Data()+8);
+			m_agc.Process(tmp, 160, packet->GetStreamId());
 			packet->SetAudioSamples(tmp, false);
 		}
 	}
@@ -499,21 +500,19 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		const auto m = packet->GetModule();
 		if (packet->GetCodecIn() == ECodecType::c2_1600)
 		{
-			// c2_1600 encodes 40 ms of audio, 320 points, so...
-			// we need some temporary audio storage for decoding c2_1600:
 			int16_t tmp[320];
-			// decode it into the temporary storage
-			c2_16[m]->codec2_decode(tmp, packet->GetM17Data()); // 8 bytes input produces 320 audio points
-			// move the first and second half
-			// the first half is for the packet
+			c2_16[m]->codec2_decode(tmp, packet->GetM17Data());
+			m_agc.Process(tmp, 160, packet->GetStreamId());
 			packet->SetAudioSamples(tmp, false);
-			// and the second half goes into the audio store
+			// AGC the second half too before storing
+			m_agc.Process(&tmp[160], 160, packet->GetStreamId());
 			memcpy(audio_store[packet->GetModule()], &(tmp[160]), 320);
 		}
 		else /* codec_in is ECodecType::c2_3200 */
 		{
 			int16_t tmp[160];
 			c2_32[m]->codec2_decode(tmp, packet->GetM17Data());
+			m_agc.Process(tmp, 160, packet->GetStreamId());
 			packet->SetAudioSamples(tmp, false);
 		}
 	}
@@ -593,6 +592,7 @@ void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		for (int i=0; i<160; i++)
 			tmp[i] = (tmp[i] * ambe_out_num) >> 8;
 	}
+	m_agc.Process(tmp, 160, packet->GetStreamId());
 	packet->SetAudioSamples(tmp, false);
 
 	dstar_device->AddPacket(packet);
@@ -647,6 +647,7 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 		std::lock_guard<std::mutex> lock(p25vocoder_mux);
 		p25vocoder.decode_4400(tmp, (uint8_t*)packet->GetP25Data());
 	}
+	m_agc.Process(tmp, 160, packet->GetStreamId());
 	packet->SetAudioSamples(tmp, false);
 	dstar_device->AddPacket(packet);
 	codec2_queue.push(packet);
@@ -707,16 +708,19 @@ void CController::AudiotoUSRP(std::shared_ptr<CTranscoderPacket> packet)
 void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 {
 	const int16_t *p = packet->GetUSRPData();
+	int16_t tmp[160];
 
 	if (usrp_rx_num != 256)
 	{
-		int16_t tmp[160];
 		for(int i = 0; i < 160; ++i)
 			tmp[i] = int16_t((p[i] * usrp_rx_num) >> 8);
-		packet->SetAudioSamples(tmp, false);
 	}
 	else
-		packet->SetAudioSamples(p, false);
+	{
+		memcpy(tmp, p, sizeof(tmp));
+	}
+	m_agc.Process(tmp, 160, packet->GetStreamId());
+	packet->SetAudioSamples(tmp, false);
 
 	dstar_device->AddPacket(packet);
 	codec2_queue.push(packet);
@@ -775,7 +779,14 @@ void CController::RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet)
 {
 	if (ECodecType::dstar == packet->GetCodecIn())
 	{
-		// codec_in is dstar, the audio has just completed, so now calc the M17 and DMR
+		// codec_in is dstar, the audio has just completed — apply AGC before encoding
+		if (m_agc.IsEnabled())
+		{
+			int16_t tmp[160];
+			memcpy(tmp, packet->GetAudioSamples(), sizeof(tmp));
+			m_agc.Process(tmp, 160, packet->GetStreamId());
+			packet->SetAudioSamples(tmp, false);
+		}
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
 		usrp_queue.push(packet);
@@ -797,6 +808,14 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 {
 	if (ECodecType::dmr == packet->GetCodecIn())
 	{
+		// codec_in is dmr (hardware decode), apply AGC before encoding
+		if (m_agc.IsEnabled())
+		{
+			int16_t tmp[160];
+			memcpy(tmp, packet->GetAudioSamples(), sizeof(tmp));
+			m_agc.Process(tmp, 160, packet->GetStreamId());
+			packet->SetAudioSamples(tmp, false);
+		}
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
 		usrp_queue.push(packet);

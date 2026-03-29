@@ -35,6 +35,11 @@
 #define SERVERADDRESS  "ServerAddress"
 #define PORT           "Port"
 #define DEVICESERIAL   "DeviceSerial"
+#define AGCENABLE      "AGC"
+#define AGCTARGET      "AGCTarget"
+#define AGCATTACK      "AGCAttack"
+#define AGCRELEASE     "AGCRelease"
+#define AGCMAXGAIN     "AGCMaxGain"
 
 static inline void split(const std::string &s, char delim, std::vector<std::string> &v)
 {
@@ -131,6 +136,16 @@ bool CConfigure::ReadData(const std::string &path)
 			usrp_rx = getSigned(key, value);
 		else if (0 == key.compare(DEVICESERIAL))
 			device_serials.push_back(value);
+		else if (0 == key.compare(AGCENABLE))
+			agc_enabled = IS_TRUE(value[0]);
+		else if (0 == key.compare(AGCTARGET))
+			agc_target = std::stof(value);
+		else if (0 == key.compare(AGCATTACK))
+			agc_attack = std::stof(value);
+		else if (0 == key.compare(AGCRELEASE))
+			agc_release = std::stof(value);
+		else if (0 == key.compare(AGCMAXGAIN))
+			agc_maxgain = std::stof(value);
 		else
 			badParam(key);
 	}
@@ -174,6 +189,10 @@ bool CConfigure::ReadData(const std::string &path)
 	std::cout << DMRGAINOUT << " = " << dmr_out << std::endl;
 	std::cout << USRPTXGAIN << " = " << usrp_tx << std::endl;
 	std::cout << USRPRXGAIN << " = " << usrp_rx << std::endl;
+	if (agc_enabled)
+		std::cout << "AGC = enabled, Target=" << agc_target << "dBFS, Attack=" << agc_attack << "ms, Release=" << agc_release << "ms, MaxGain=" << agc_maxgain << "dB" << std::endl;
+	else
+		std::cout << "AGC = disabled" << std::endl;
 
 	return false;
 }

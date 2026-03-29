@@ -37,11 +37,23 @@ public:
 	unsigned GetPort(void) const { return port; }
 	const std::vector<std::string> &GetDeviceSerials(void) const { return device_serials; }
 
+	// AGC
+	bool  GetAGCEnabled(void) const  { return agc_enabled; }
+	float GetAGCTarget(void) const   { return agc_target; }
+	float GetAGCAttack(void) const   { return agc_attack; }
+	float GetAGCRelease(void) const  { return agc_release; }
+	float GetAGCMaxGain(void) const  { return agc_maxgain; }
+
 private:
 	std::string tcmods, address;
 	std::vector<std::string> device_serials;
 	uint16_t port;
 	int dstar_in, dstar_out, dmr_in, dmr_out, usrp_tx, usrp_rx;
+	bool  agc_enabled = false;
+	float agc_target  = -16.0f;
+	float agc_attack  = 50.0f;
+	float agc_release = 500.0f;
+	float agc_maxgain = 12.0f;
 
 	int getSigned(const std::string &key, const std::string &value) const;
 	void badParam(const std::string &key) const;
