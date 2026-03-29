@@ -35,7 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-RUN git clone --depth 1 https://github.com/nostar/imbe_vocoder.git
+RUN git clone --depth 1 https://github.com/jcmerg/imbe_vocoder.git
 
 WORKDIR /build/imbe_vocoder
 RUN make -j$(nproc) && make install
