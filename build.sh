@@ -3,6 +3,8 @@
 # Usage: bash build.sh [--swambe2]
 #
 # Clones/updates tcd and urfd repos, builds tcd, installs binary.
+# On x86_64 with --swambe2, uses md380_vocoder_dynarmic (ARM JIT via dynarmic).
+# On ARM with --swambe2, uses native md380_vocoder.
 # Run as root or with sudo.
 
 set -e
@@ -10,8 +12,10 @@ set -e
 BUILDDIR="/tmp/tcd-build"
 TCD_REPO="https://github.com/jcmerg/tcd.git"
 URFD_REPO="https://github.com/jcmerg/urfd.git"
+MD380_DYN_REPO="https://github.com/jcmerg/md380_vocoder_dynarmic.git"
 INSTALL_DIR="/usr/local/bin"
 SWAMBE2=false
+ARCH=$(uname -m)
 
 # Parse args
 for arg in "$@"; do
@@ -22,6 +26,7 @@ for arg in "$@"; do
 done
 
 echo "=== Building tcd ==="
+echo "Architecture: $ARCH"
 echo "Software AMBE2 (md380): $SWAMBE2"
 
 # Clone or update repos
@@ -44,6 +49,38 @@ else
     git clone --depth 1 "$URFD_REPO"
 fi
 
+# Build md380_vocoder_dynarmic for x86_64 if needed
+if [ "$SWAMBE2" = true ] && [ "$ARCH" = "x86_64" ]; then
+    echo "Building md380_vocoder_dynarmic for x86_64..."
+
+    # Check build dependencies
+    for cmd in cmake unzip python3 xxd; do
+        if ! command -v $cmd &>/dev/null; then
+            echo "ERROR: $cmd is required but not installed"
+            echo "  apt install build-essential cmake unzip python3 xxd libboost-dev"
+            exit 1
+        fi
+    done
+
+    if [ -d md380_vocoder_dynarmic ]; then
+        cd md380_vocoder_dynarmic && git pull && cd ..
+    else
+        git clone --depth 1 "$MD380_DYN_REPO"
+    fi
+
+    cd md380_vocoder_dynarmic
+    mkdir -p build && cd build
+    cmake .. && make -j$(nproc)
+    sh ../makelib.sh
+
+    # Install library and header
+    cp libmd380_vocoder.a /usr/local/lib/
+    cp ../md380_vocoder.h /usr/local/include/
+    ldconfig
+    echo "md380_vocoder_dynarmic installed"
+    cd "$BUILDDIR"
+fi
+
 # Prepare build
 cd "$BUILDDIR/tcd"
 cp config/* .
@@ -54,7 +91,7 @@ if [ "$SWAMBE2" = true ]; then
 fi
 
 # Build
-echo "Compiling..."
+echo "Compiling tcd..."
 make clean
 make -j$(nproc)
 
