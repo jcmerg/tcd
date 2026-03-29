@@ -67,3 +67,14 @@ Use:
 - `sudo make uninstall` to uninstall *tcd*.
 
 When started, *tcd* will establish a TCP connection for each transcoded reflector module. If the TCP connection is lost, *tcd* will block until the connection is reestablished. A message will be printed every 10 seconds suggesting that the reflector needs to be restarted.
+
+## Docker
+
+A Docker container is available in the [docker/](docker/) directory. It uses the [md380_vocoder_dynarmic](https://github.com/jcmerg/md380_vocoder_dynarmic) software vocoder, which runs the AMBE2 codec on x86_64 via ARM JIT emulation (dynarmic). This means only one DVSI hardware device is needed — the second vocoder runs entirely in software.
+
+Features:
+- Runs on x86_64 (no ARM board required)
+- Selective USB unbinding (other FTDI devices like serial converters keep working)
+- Deployment instructions for both Linux hosts and Synology NAS
+
+See [docker/README.md](docker/README.md) for setup instructions.
