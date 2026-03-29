@@ -146,8 +146,8 @@ bool CController::IsAmbeDevice(const std::string &desc)
 
 void CController::UnbindAllFtdiSio()
 {
-	// Unbind AMBE-related ftdi_sio interfaces so libftd2xx can access them.
-	// Only unbind devices with known AMBE USB product IDs (0403:6001, 0403:6010, 0403:6015 is NOT AMBE).
+	// Unbind ftdi_sio for known AMBE USB product IDs so libftd2xx can access them.
+	// PIDs: 6001 (FT232R), 6010 (FT2232H), 6015 (FT230X/FT-X series)
 	static const std::vector<std::string> ambe_pids = { "6001", "6010", "6015" };
 	const std::string driverpath = "/sys/bus/usb/drivers/ftdi_sio/";
 	DIR *dir = opendir(driverpath.c_str());
