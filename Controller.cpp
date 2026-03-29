@@ -146,9 +146,9 @@ bool CController::IsAmbeDevice(const std::string &desc)
 
 void CController::UnbindAllFtdiSio()
 {
-	// Unbind ftdi_sio for known AMBE USB product IDs so libftd2xx can access them.
-	// PIDs: 6001 (FT232R), 6010 (FT2232H), 6015 (FT230X/FT-X series)
-	static const std::vector<std::string> ambe_pids = { "6001", "6010", "6015" };
+	// Unbind ftdi_sio only for whitelisted AMBE devices (by serial number).
+	// Other FTDI devices (USB-serial adapters etc.) are left alone.
+	const auto &serials = g_Conf.GetDeviceSerials();
 	const std::string driverpath = "/sys/bus/usb/drivers/ftdi_sio/";
 	DIR *dir = opendir(driverpath.c_str());
 	if (!dir) return;
@@ -159,30 +159,30 @@ void CController::UnbindAllFtdiSio()
 		if (!strchr(entry->d_name, ':'))
 			continue;
 
-		// Check USB product ID via sysfs
-		std::string pidpath = driverpath + entry->d_name + "/../idProduct";
-		std::ifstream pf(pidpath);
-		if (!pf.is_open())
+		// Read serial number via sysfs
+		std::string serialpath = driverpath + entry->d_name + "/../serial";
+		std::ifstream sf(serialpath);
+		if (!sf.is_open())
 			continue;
 
-		std::string pid;
-		std::getline(pf, pid);
-		while (!pid.empty() && (pid.back() == '\n' || pid.back() == '\r'))
-			pid.pop_back();
+		std::string serial;
+		std::getline(sf, serial);
+		while (!serial.empty() && (serial.back() == '\n' || serial.back() == '\r'))
+			serial.pop_back();
 
-		bool is_ambe = false;
-		for (const auto &ap : ambe_pids)
+		bool is_whitelisted = serials.empty(); // no whitelist = unbind all (legacy behavior)
+		for (const auto &ws : serials)
 		{
-			if (pid == ap) { is_ambe = true; break; }
+			if (serial == ws) { is_whitelisted = true; break; }
 		}
 
-		if (is_ambe)
+		if (is_whitelisted)
 		{
 			std::ofstream uf(driverpath + "unbind");
 			if (uf.is_open())
 			{
 				uf << entry->d_name;
-				std::cout << "Unbound ftdi_sio from " << entry->d_name << " (PID=" << pid << ")" << std::endl;
+				std::cout << "Unbound ftdi_sio from " << entry->d_name << " (SN=" << serial << ")" << std::endl;
 			}
 		}
 	}
