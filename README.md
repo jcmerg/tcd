@@ -72,22 +72,34 @@ Modules = S                       # must match urfd.ini [Transcoder] section
 # Whitelist AMBE device by serial (use 'tcd --list-devices' to find it)
 DeviceSerial = DQ015SBR
 
-# Gain values in dB (-24 to +24)
-DStarGainIn   =  16
-DStarGainOut  = -16
-DmrYsfGainIn  =  -6
-DmrYsfGainOut =  -6
-UsrpTxGain    = -8
-UsrpRxGain    = -16
+# Static gain values in dB (-24 to +24)
+# With AGC enabled, these only need coarse codec-level matching.
+DStarGainIn   =  8
+DStarGainOut  = -8
+DmrYsfGainIn  =  0
+DmrYsfGainOut =  0
+UsrpTxGain    =  0
+UsrpRxGain    = -8
+
+# AGC (Automatic Gain Control)
+AGC           = true
+AGCTarget     = -16
+AGCAttack     = 50
+AGCRelease    = 500
+AGCMaxGain    = 12
 ```
 
 ### Audio gain
 
-All transcoding passes through PCM as intermediate format. Gain values (in dB) are applied at the decode and encode stages:
+All transcoding passes through PCM as intermediate format:
 
 ```
-Source Codec --[GainIn]--> PCM --[GainOut]--> Target Codec
+Source Codec --[GainIn]--> PCM --[AGC]--> normalized PCM --[GainOut]--> Target Codec
 ```
+
+#### Static gain
+
+Gain values (in dB, range -24 to +24) are applied at decode and encode stages:
 
 | Parameter | Stage | Direction | Description |
 |-----------|-------|-----------|-------------|
@@ -98,18 +110,23 @@ Source Codec --[GainIn]--> PCM --[GainOut]--> Target Codec
 | `UsrpRxGain` | Receive | PCM from USRP/SvxLink → internal PCM | Attenuate incoming PCM sources |
 | `UsrpTxGain` | Transmit | Internal PCM → USRP/SvxLink | Adjust PCM level sent to USRP |
 
-The net gain for a transcoding path is the sum of the source GainIn and the target GainOut:
+The net gain for a transcoding path is the sum of the source GainIn and the target GainOut. With AGC enabled, the static gains only need to do coarse codec-level matching — the AGC handles user-to-user variation.
 
-| Route | Gain path | Net |
-|-------|-----------|-----|
-| D-Star → DMR/YSF | DStarGainIn + DmrYsfGainOut | +10 dB |
-| DMR/YSF → D-Star | DmrYsfGainIn + DStarGainOut | -22 dB |
-| D-Star → D-Star | DStarGainIn + DStarGainOut | 0 dB |
-| DMR/YSF → DMR/YSF | DmrYsfGainIn + DmrYsfGainOut | -12 dB |
-| SvxLink → D-Star | UsrpRxGain + DStarGainOut | -32 dB |
-| SvxLink → DMR/YSF | UsrpRxGain + DmrYsfGainOut | -22 dB |
-| D-Star → SvxLink | DStarGainIn + UsrpTxGain | +8 dB |
-| DMR/YSF → SvxLink | DmrYsfGainIn + UsrpTxGain | -14 dB |
+#### AGC (Automatic Gain Control)
+
+The AGC normalizes audio levels after decode and before encode. It tracks gain per stream (per transmission), so each user gets independent level adjustment.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `AGC` | `false` | Enable/disable AGC (`true` or `false`) |
+| `AGCTarget` | `-16` | Target RMS level in dBFS. Lower = quieter output. |
+| `AGCAttack` | `50` | Attack time in ms. How fast loud signals are dampened. |
+| `AGCRelease` | `500` | Release time in ms. How fast quiet signals are raised. |
+| `AGCMaxGain` | `12` | Maximum gain boost in dB. Limits noise amplification in quiet passages. |
+
+**Without AGC**, the static gain values must compensate for all level differences between codecs and users. Tuning is tedious and every route needs individual attention.
+
+**With AGC**, static gains only do coarse matching (D-Star is inherently quieter, so a small boost remains). The AGC automatically adjusts for different microphone levels, radio models, and codec characteristics.
 
 ## Managing tcd
 
