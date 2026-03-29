@@ -49,36 +49,57 @@ else
     git clone --depth 1 "$URFD_REPO"
 fi
 
-# Build md380_vocoder_dynarmic for x86_64 if needed
-if [ "$SWAMBE2" = true ] && [ "$ARCH" = "x86_64" ]; then
-    echo "Building md380_vocoder_dynarmic for x86_64..."
+# Build/install md380_vocoder if needed
+if [ "$SWAMBE2" = true ]; then
+    if [ "$ARCH" = "x86_64" ]; then
+        # x86_64: use dynarmic (ARM JIT emulation)
+        echo "Building md380_vocoder_dynarmic for x86_64..."
+        MD380_REPO="$MD380_DYN_REPO"
+        MD380_DIR="md380_vocoder_dynarmic"
 
-    # Check build dependencies
-    for cmd in cmake unzip python3 xxd; do
-        if ! command -v $cmd &>/dev/null; then
-            echo "ERROR: $cmd is required but not installed"
-            echo "  apt install build-essential cmake unzip python3 xxd libboost-dev"
-            exit 1
+        for cmd in cmake unzip python3 xxd; do
+            if ! command -v $cmd &>/dev/null; then
+                echo "ERROR: $cmd is required but not installed"
+                echo "  apt install build-essential cmake unzip python3 xxd libboost-dev"
+                exit 1
+            fi
+        done
+
+        if [ -d "$MD380_DIR" ]; then
+            cd "$MD380_DIR" && git pull && cd ..
+        else
+            git clone --depth 1 "$MD380_REPO"
         fi
-    done
 
-    if [ -d md380_vocoder_dynarmic ]; then
-        cd md380_vocoder_dynarmic && git pull && cd ..
+        cd "$MD380_DIR"
+        mkdir -p build && cd build
+        cmake .. && make -j$(nproc)
+        sh ../makelib.sh
+
+        cp libmd380_vocoder.a /usr/local/lib/
+        cp ../md380_vocoder.h /usr/local/include/
+        ldconfig
+        echo "md380_vocoder_dynarmic installed"
+        cd "$BUILDDIR"
     else
-        git clone --depth 1 "$MD380_DYN_REPO"
+        # ARM: use native md380_vocoder
+        echo "Building md380_vocoder (native ARM)..."
+        MD380_REPO="https://github.com/jcmerg/md380_vocoder.git"
+        MD380_DIR="md380_vocoder"
+
+        if [ -d "$MD380_DIR" ]; then
+            cd "$MD380_DIR" && git pull && cd ..
+        else
+            git clone --depth 1 "$MD380_REPO"
+        fi
+
+        cd "$MD380_DIR"
+        make clean
+        make -j$(nproc)
+        make install
+        echo "md380_vocoder (native ARM) installed"
+        cd "$BUILDDIR"
     fi
-
-    cd md380_vocoder_dynarmic
-    mkdir -p build && cd build
-    cmake .. && make -j$(nproc)
-    sh ../makelib.sh
-
-    # Install library and header
-    cp libmd380_vocoder.a /usr/local/lib/
-    cp ../md380_vocoder.h /usr/local/include/
-    ldconfig
-    echo "md380_vocoder_dynarmic installed"
-    cd "$BUILDDIR"
 fi
 
 # Prepare build
