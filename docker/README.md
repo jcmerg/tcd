@@ -98,15 +98,17 @@ This is important on shared systems like a NAS where DSM and other services comp
 
 ## USB Device Handling
 
-The container automatically detaches AMBE DVSI devices from the Linux `ftdi_sio` kernel driver at startup. Other FTDI devices (USB serial converters etc.) remain unaffected.
+The container **automatically** detaches AMBE DVSI devices from the Linux `ftdi_sio` kernel driver at startup via `entrypoint.sh`. No manual steps required. Other FTDI devices (USB serial converters etc.) remain unaffected and keep working as `/dev/ttyUSBx`.
+
+There is **no need to unload kernel modules** (`rmmod ftdi_sio`) — only the specific AMBE device is unbound.
 
 Supported DVSI devices:
 - ThumbDV / DVstick-30 / USB-3000 (AMBE3000, 1 channel)
 - USB-3003 / USB-3012 / DF2ET-3003 (AMBE3003, 3 channels)
 
-### Optional: udev rule
+### Optional: udev rule (not required)
 
-Instead of relying on the container to unbind devices, you can install a udev rule on the host for automatic unbinding on plug-in:
+If you prefer to unbind the AMBE device at the host level (e.g. automatically on plug-in, before the container starts), you can optionally install a udev rule. This is **not needed** for normal operation — the container handles it.
 
 ```bash
 sudo cp 99-ambe-unbind.rules /etc/udev/rules.d/
