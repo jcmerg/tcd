@@ -75,11 +75,41 @@ DeviceSerial = DQ015SBR
 # Gain values in dB (-24 to +24)
 DStarGainIn   =  16
 DStarGainOut  = -16
-DmrYsfGainIn  =  -3
-DmrYsfGainOut =   0
-UsrpTxGain    =  12
-UsrpRxGain    =  -6
+DmrYsfGainIn  =  -6
+DmrYsfGainOut =  -6
+UsrpTxGain    = -8
+UsrpRxGain    = -16
 ```
+
+### Audio gain
+
+All transcoding passes through PCM as intermediate format. Gain values (in dB) are applied at the decode and encode stages:
+
+```
+Source Codec --[GainIn]--> PCM --[GainOut]--> Target Codec
+```
+
+| Parameter | Stage | Direction | Description |
+|-----------|-------|-----------|-------------|
+| `DStarGainIn` | Decode | D-Star AMBE → PCM | Boost quiet D-Star audio to normal PCM level |
+| `DStarGainOut` | Encode | PCM → D-Star AMBE | Reduce PCM back to D-Star level |
+| `DmrYsfGainIn` | Decode | DMR/YSF AMBE2+ → PCM | Attenuate hot DMR/YSF audio |
+| `DmrYsfGainOut` | Encode | PCM → DMR/YSF AMBE2+ | Attenuate PCM for DMR/YSF encoding |
+| `UsrpRxGain` | Receive | PCM from USRP/SvxLink → internal PCM | Attenuate incoming PCM sources |
+| `UsrpTxGain` | Transmit | Internal PCM → USRP/SvxLink | Adjust PCM level sent to USRP |
+
+The net gain for a transcoding path is the sum of the source GainIn and the target GainOut:
+
+| Route | Gain path | Net |
+|-------|-----------|-----|
+| D-Star → DMR/YSF | DStarGainIn + DmrYsfGainOut | +10 dB |
+| DMR/YSF → D-Star | DmrYsfGainIn + DStarGainOut | -22 dB |
+| D-Star → D-Star | DStarGainIn + DStarGainOut | 0 dB |
+| DMR/YSF → DMR/YSF | DmrYsfGainIn + DmrYsfGainOut | -12 dB |
+| SvxLink → D-Star | UsrpRxGain + DStarGainOut | -32 dB |
+| SvxLink → DMR/YSF | UsrpRxGain + DmrYsfGainOut | -22 dB |
+| D-Star → SvxLink | DStarGainIn + UsrpTxGain | +8 dB |
+| DMR/YSF → SvxLink | DmrYsfGainIn + UsrpTxGain | -14 dB |
 
 ## Managing tcd
 
