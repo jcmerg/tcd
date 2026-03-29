@@ -86,6 +86,16 @@ The `tcd.ini` must match the `[Transcoder]` section of your `urfd.ini`:
 | `DmrYsfGainIn/Out` | DMR/YSF vocoder gain in dB |
 | `UsrpTxGain/RxGain` | USRP gain in dB |
 
+## CPU Priority
+
+The compose files set elevated CPU priority for realtime vocoding:
+
+- `cpu_shares: 1024` — double the default priority (512), ensures tcd gets preferred CPU time under load
+- `ulimits.rtprio: 99` — allows realtime scheduling inside the container
+- `ulimits.nice: -20` — allows highest nice priority
+
+This is important on shared systems like a NAS where DSM and other services compete for CPU.
+
 ## USB Device Handling
 
 The container automatically detaches AMBE DVSI devices from the Linux `ftdi_sio` kernel driver at startup. Other FTDI devices (USB serial converters etc.) remain unaffected.
