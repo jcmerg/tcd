@@ -16,6 +16,7 @@
 
 #include <unistd.h>
 #include <cstring>
+#include <csignal>
 #include <iostream>
 
 #include "Controller.h"
@@ -27,6 +28,9 @@ CController g_Cont;
 
 int main(int argc, char *argv[])
 {
+	// Ignore SIGPIPE so send() on a broken connection returns EPIPE
+	// instead of killing the process. Needed for clean reconnection.
+	signal(SIGPIPE, SIG_IGN);
 	if (argc == 2 && 0 == strcmp(argv[1], "--list-devices"))
 	{
 		g_Cont.ListDevices();
