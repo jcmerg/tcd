@@ -28,7 +28,20 @@ If you have other FTDI devices (USB serial adapters etc.), use `DeviceSerial` in
 
 ## Build & Install
 
-Clone both tcd and urfd in the same parent directory (tcd has symlinks to urfd source files):
+### Quick start (build.sh)
+
+```bash
+git clone https://github.com/jcmerg/tcd.git
+cd tcd
+sudo bash build.sh --swambe2    # with md380 software vocoder
+# or: sudo bash build.sh        # without (needs two DVSI devices)
+```
+
+The script clones/updates both tcd and urfd repos (tcd has symlinks to urfd source files), builds and installs the binary, and restarts the service.
+
+Edit `/usr/local/etc/tcd.ini` after install (see Configuration below).
+
+### Manual build
 
 ```bash
 git clone https://github.com/jcmerg/tcd.git
