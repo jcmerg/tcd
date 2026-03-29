@@ -39,6 +39,7 @@ public:
 	CController();
 	bool Start();
 	void Stop();
+	void ListDevices();
 	void RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet);
 	void RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet);
 	void Dump(const std::shared_ptr<CTranscoderPacket> packet, const std::string &title) const;
@@ -63,6 +64,8 @@ protected:
 
 	int32_t calcNumerator(int32_t db) const;
 	bool DiscoverFtdiDevices(std::list<std::pair<std::string, std::string>> &found);
+	bool IsAmbeDevice(const std::string &desc);
+	void UnbindAllFtdiSio();
 	bool InitVocoders();
 	// processing threads
 	void ReadReflectorThread();

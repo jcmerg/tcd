@@ -20,6 +20,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 #include <regex>
 
 enum class EGainType { dmrin, dmrout, dstarin, dstarout, usrptx, usrprx };
@@ -34,10 +35,11 @@ public:
 	std::string GetTCMods(void) const { return tcmods; }
 	std::string GetAddress(void) const { return address; }
 	unsigned GetPort(void) const { return port; }
+	const std::vector<std::string> &GetDeviceSerials(void) const { return device_serials; }
 
 private:
-	// CFGDATA data;
 	std::string tcmods, address;
+	std::vector<std::string> device_serials;
 	uint16_t port;
 	int dstar_in, dstar_out, dmr_in, dmr_out, usrp_tx, usrp_rx;
 

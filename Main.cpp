@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <unistd.h>
+#include <cstring>
 #include <iostream>
 
 #include "Controller.h"
@@ -26,9 +27,16 @@ CController g_Cont;
 
 int main(int argc, char *argv[])
 {
+	if (argc == 2 && 0 == strcmp(argv[1], "--list-devices"))
+	{
+		g_Cont.ListDevices();
+		return EXIT_SUCCESS;
+	}
+
 	if (2 != argc)
 	{
-		std::cerr << "ERROR: Usage: " << argv[0] << " PATHTOINIFILE" << std::endl;
+		std::cerr << "Usage: " << argv[0] << " PATHTOINIFILE" << std::endl;
+		std::cerr << "       " << argv[0] << " --list-devices" << std::endl;
 		return EXIT_FAILURE;
 	}
 

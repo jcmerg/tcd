@@ -34,6 +34,7 @@
 #define MODULES        "Modules"
 #define SERVERADDRESS  "ServerAddress"
 #define PORT           "Port"
+#define DEVICESERIAL   "DeviceSerial"
 
 static inline void split(const std::string &s, char delim, std::vector<std::string> &v)
 {
@@ -128,6 +129,8 @@ bool CConfigure::ReadData(const std::string &path)
 			usrp_tx = getSigned(key, value);
 		else if (0 == key.compare(USRPRXGAIN))
 			usrp_rx = getSigned(key, value);
+		else if (0 == key.compare(DEVICESERIAL))
+			device_serials.push_back(value);
 		else
 			badParam(key);
 	}
