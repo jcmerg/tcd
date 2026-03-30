@@ -679,11 +679,13 @@ void CDVDevice::ReadDevice()
 
 			if (0 == RxBytes)
 			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(5));
+				// Adaptive sleep: short when packets in-flight, longer when idle
+				int sleep_ms = (buffer_depth > 0) ? 1 : 10;
+				std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
 				if (! keep_running)
 					return;
 				// Timeout recovery: if chip hasn't responded in 500ms while packets are in-flight
-				if (buffer_depth > 0 && ++wait_count > 100)
+				if (buffer_depth > 0 && ++wait_count > 500)
 				{
 					buffer_depth = 0;
 					wait_count = 0;
