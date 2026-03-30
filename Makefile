@@ -4,6 +4,10 @@ include tcd.mk
 
 GCC = g++
 
+# Shared source files from urfd (copied by 'make urfd-files')
+URFD_DIR ?= ../urfd/reflector
+URFD_FILES = IP.cpp IP.h TCPacketDef.h TCSocket.cpp TCSocket.h Timer.h
+
 ifeq ($(debug), true)
 CFLAGS = -ggdb3 -W -Werror -Icodec2 -MMD -MD -std=c++17
 else
@@ -17,14 +21,22 @@ OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 EXE = tcd
 
-$(EXE) : $(OBJS)
+$(EXE) : urfd-files $(OBJS)
 	$(GCC) $(OBJS) $(LDFLAGS) -o $@ -Xlinker --section-start=.firmware=0x0800C000 -Xlinker  --section-start=.sram=0x20000000
 
 %.o : %.cpp
 	$(GCC) $(CFLAGS) -c $< -o $@
 
+# Copy shared files from urfd if not present or outdated
+urfd-files :
+	@for f in $(URFD_FILES); do \
+		if [ ! -f $$f ] || [ $(URFD_DIR)/$$f -nt $$f ]; then \
+			cp $(URFD_DIR)/$$f . && echo "Copied $$f from urfd"; \
+		fi \
+	done
+
 clean :
-	$(RM) $(EXE) $(OBJS) $(DEPS)
+	$(RM) $(EXE) $(OBJS) $(DEPS) $(URFD_FILES)
 
 -include $(DEPS)
 

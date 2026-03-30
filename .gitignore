@@ -15,3 +15,11 @@ tcd.*
 
 # Executables
 tcd
+
+# Shared files copied from urfd during build
+IP.cpp
+IP.h
+TCPacketDef.h
+TCSocket.cpp
+TCSocket.h
+Timer.h
