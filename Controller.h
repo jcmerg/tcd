@@ -85,11 +85,9 @@ protected:
 	void AudiotoUSRP(std::shared_ptr<CTranscoderPacket> packet);
 	void SvxToAudio(std::shared_ptr<CTranscoderPacket> packet);
 	void SendToReflector(std::shared_ptr<CTranscoderPacket> packet);
-#ifdef USE_SW_AMBE2
-    std::future<void> swambe2Future;
-    CPacketQueue swambe2_queue;
-    void ProcessSWAMBE2Thread();
-    void SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet);
-    void AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet);
-#endif
+	std::future<void> swambe2Future;
+	CPacketQueue swambe2_queue;
+	void ProcessSWAMBE2Thread();
+	void SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet);
+	void AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet);
 };

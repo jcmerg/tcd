@@ -26,9 +26,7 @@
 #include <thread>
 #include <queue>
 #include <vector>
-#ifdef USE_SW_AMBE2
 #include <md380_vocoder.h>
-#endif
 
 #include "TranscoderPacket.h"
 #include "Controller.h"
@@ -60,9 +58,7 @@ bool CController::Start()
 	c2Future        = std::async(std::launch::async, &CController::ProcessC2Thread,     this);
 	imbeFuture      = std::async(std::launch::async, &CController::ProcessIMBEThread,   this);
 	usrpFuture      = std::async(std::launch::async, &CController::ProcessUSRPThread,   this);
-#ifdef USE_SW_AMBE2
 	swambe2Future   = std::async(std::launch::async, &CController::ProcessSWAMBE2Thread,this);
-#endif
 	return false;
 }
 
@@ -375,10 +371,9 @@ bool CController::InitVocoders()
 				int8_t(g_Conf.GetGain(EGainType::dmrin)), int8_t(g_Conf.GetGain(EGainType::dmrout))))
 			return true;
 	}
-	// Single device with md380 (swambe2 mode)
+	// Single device with md380 software vocoder for DMR
 	else if (deviceset.size() == 1)
 	{
-#ifdef USE_SW_AMBE2
 		std::cout << "Using one DVSI device and md380_vocoder" << std::endl;
 		const auto &dev = deviceset.front();
 		Edvtype dvtype = Edvtype::dv3003;
@@ -398,16 +393,15 @@ bool CController::InitVocoders()
 		if (dstar_device->OpenDevice(dev.first, dev.second, dvtype,
 				int8_t(g_Conf.GetGain(EGainType::dstarin)), int8_t(g_Conf.GetGain(EGainType::dstarout))))
 			return true;
-#else
-		std::cerr << "Need two DVSI devices (or one DV3000 + one DV3003). Build with swambe2=true for single device." << std::endl;
-		return true;
-#endif
 	}
 	else
 	{
 		std::cerr << "No suitable DVSI device configuration found" << std::endl;
 		return true;
 	}
+
+	// Always init md380 software vocoder (used for DMR re-encode after AGC)
+	md380_init();
 
 	dstar_device->Start();
 	if (dmrsf_device)
@@ -448,20 +442,21 @@ void CController::ReadReflectorThread()
 					dstar_device->AddPacket(packet);
 				break;
 			case ECodecType::dmr:
-#ifdef USE_SW_AMBE2
-				swambe2_queue.push(packet);
-#else
-				if (mixed_mode)
+				if (dmrsf_device)
 				{
-					auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-					char mod = packet->GetModule();
-					auto it = std::string(g_Conf.GetTCMods()).find(mod);
-					uint8_t dmr_ch = (it == 0) ? 1 : 2;  // modA→ch1, modB→ch2
-					dv3003->AddPacketToChannel(packet, dmr_ch);
+					if (mixed_mode)
+					{
+						auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+						char mod = packet->GetModule();
+						auto it = std::string(g_Conf.GetTCMods()).find(mod);
+						uint8_t dmr_ch = (it == 0) ? 1 : 2;
+						dv3003->AddPacketToChannel(packet, dmr_ch);
+					}
+					else
+						dmrsf_device->AddPacket(packet);
 				}
 				else
-					dmrsf_device->AddPacket(packet);
-#endif
+					swambe2_queue.push(packet);
 				break;
 			case ECodecType::p25:
 				imbe_queue.push(packet);
@@ -568,21 +563,24 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	else
 		dstar_device->AddPacket(packet);
 
-#ifdef USE_SW_AMBE2
-	md380_encode_fec(ambe2, packet->GetAudioSamples());
-	packet->SetDMRData(ambe2);
-#else
-	if (mixed_mode)
+	if (dmrsf_device)
 	{
-		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-		char mod = packet->GetModule();
-		auto it = std::string(g_Conf.GetTCMods()).find(mod);
-		uint8_t dmr_ch = (it == 0) ? 1 : 2;
-		dv3003->AddPacketToChannel(packet, dmr_ch);
+		if (mixed_mode)
+		{
+			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+			char mod = packet->GetModule();
+			auto it = std::string(g_Conf.GetTCMods()).find(mod);
+			uint8_t dmr_ch = (it == 0) ? 1 : 2;
+			dv3003->AddPacketToChannel(packet, dmr_ch);
+		}
+		else
+			dmrsf_device->AddPacket(packet);
 	}
 	else
-		dmrsf_device->AddPacket(packet);
-#endif
+	{
+		md380_encode_fec(ambe2, packet->GetAudioSamples());
+		packet->SetDMRData(ambe2);
+	}
 	{
 		std::lock_guard<std::mutex> lock(p25vocoder_mux);
 		p25vocoder.encode_4400((int16_t*)packet->GetAudioSamples(), imbe);
@@ -618,7 +616,6 @@ void CController::ProcessC2Thread()
 	}
 }
 
-#ifdef USE_SW_AMBE2
 void CController::AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet)
 {
 	uint8_t ambe2[9];
@@ -689,7 +686,6 @@ void CController::ProcessSWAMBE2Thread()
 		}
 	}
 }
-#endif
 
 void CController::AudiotoIMBE(std::shared_ptr<CTranscoderPacket> packet)
 {
@@ -724,20 +720,21 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 		dstar_device->AddPacket(packet);
 	codec2_queue.push(packet);
 
-#ifdef USE_SW_AMBE2
-	swambe2_queue.push(packet);
-#else
-	if (mixed_mode)
+	if (dmrsf_device)
 	{
-		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-		char mod = packet->GetModule();
-		auto it = std::string(g_Conf.GetTCMods()).find(mod);
-		uint8_t dmr_ch = (it == 0) ? 1 : 2;
-		dv3003->AddPacketToChannel(packet, dmr_ch);
+		if (mixed_mode)
+		{
+			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+			char mod = packet->GetModule();
+			auto it = std::string(g_Conf.GetTCMods()).find(mod);
+			uint8_t dmr_ch = (it == 0) ? 1 : 2;
+			dv3003->AddPacketToChannel(packet, dmr_ch);
+		}
+		else
+			dmrsf_device->AddPacket(packet);
 	}
 	else
-		dmrsf_device->AddPacket(packet);
-#endif
+		swambe2_queue.push(packet);
 
 	usrp_queue.push(packet);
 }
@@ -813,20 +810,21 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 		dstar_device->AddPacket(packet);
 	codec2_queue.push(packet);
 
-#ifdef USE_SW_AMBE2
-	swambe2_queue.push(packet);
-#else
-	if (mixed_mode)
+	if (dmrsf_device)
 	{
-		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-		char mod = packet->GetModule();
-		auto it = std::string(g_Conf.GetTCMods()).find(mod);
-		uint8_t dmr_ch = (it == 0) ? 1 : 2;
-		dv3003->AddPacketToChannel(packet, dmr_ch);
+		if (mixed_mode)
+		{
+			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+			char mod = packet->GetModule();
+			auto it = std::string(g_Conf.GetTCMods()).find(mod);
+			uint8_t dmr_ch = (it == 0) ? 1 : 2;
+			dv3003->AddPacketToChannel(packet, dmr_ch);
+		}
+		else
+			dmrsf_device->AddPacket(packet);
 	}
 	else
-		dmrsf_device->AddPacket(packet);
-#endif
+		swambe2_queue.push(packet);
 
 	imbe_queue.push(packet);
 }
@@ -876,20 +874,21 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 		dstar_device->AddPacket(packet);
 	codec2_queue.push(packet);
 
-#ifdef USE_SW_AMBE2
-	swambe2_queue.push(packet);
-#else
-	if (mixed_mode)
+	if (dmrsf_device)
 	{
-		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-		char mod = packet->GetModule();
-		auto it = std::string(g_Conf.GetTCMods()).find(mod);
-		uint8_t dmr_ch = (it == 0) ? 1 : 2;
-		dv3003->AddPacketToChannel(packet, dmr_ch);
+		if (mixed_mode)
+		{
+			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+			char mod = packet->GetModule();
+			auto it = std::string(g_Conf.GetTCMods()).find(mod);
+			uint8_t dmr_ch = (it == 0) ? 1 : 2;
+			dv3003->AddPacketToChannel(packet, dmr_ch);
+		}
+		else
+			dmrsf_device->AddPacket(packet);
 	}
 	else
-		dmrsf_device->AddPacket(packet);
-#endif
+		swambe2_queue.push(packet);
 
 	imbe_queue.push(packet);
 }
@@ -927,20 +926,21 @@ void CController::RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet)
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
 		usrp_queue.push(packet);
-#ifdef USE_SW_AMBE2
-		swambe2_queue.push(packet);
-#else
-		if (mixed_mode)
+		if (dmrsf_device)
 		{
-			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-			char mod = packet->GetModule();
-			auto it = std::string(g_Conf.GetTCMods()).find(mod);
-			uint8_t dmr_ch = (it == 0) ? 1 : 2;
-			dv3003->AddPacketToChannel(packet, dmr_ch);
+			if (mixed_mode)
+			{
+				auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+				char mod = packet->GetModule();
+				auto it = std::string(g_Conf.GetTCMods()).find(mod);
+				uint8_t dmr_ch = (it == 0) ? 1 : 2;
+				dv3003->AddPacketToChannel(packet, dmr_ch);
+			}
+			else
+				dmrsf_device->AddPacket(packet);
 		}
 		else
-			dmrsf_device->AddPacket(packet);
-#endif
+			swambe2_queue.push(packet);
 	}
 	else
 	{
@@ -961,6 +961,13 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 			memcpy(tmp, packet->GetAudioSamples(), sizeof(tmp));
 			m_agc.Process(tmp, 160, packet->GetStreamId());
 			packet->SetAudioSamples(tmp, false);
+		}
+		// Re-encode DMR from AGC'd PCM via md380 software vocoder
+		// so DMR/YSF output has correct levels (not the original hot passthrough)
+		{
+			uint8_t ambe2[9];
+			md380_encode_fec(ambe2, packet->GetAudioSamples());
+			packet->SetDMRData(ambe2);
 		}
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
