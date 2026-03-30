@@ -1,15 +1,17 @@
 #pragma once
 
-// Simple single-band AGC for PCM audio (160 samples / 20ms frames)
-// Applied between decode and encode in the transcoder pipeline.
+// Single-band AGC with noise gate and peak limiter for PCM audio
+// (160 samples / 20ms frames). Applied between decode and encode
+// in the transcoder pipeline.
 
 #include <cstdint>
 #include <cmath>
+#include <algorithm>
 #include <unordered_map>
 
 struct AGCState
 {
-	float gain = 1.0f;       // current linear gain
+	float gain = 1.0f;
 	uint16_t streamId = 0;
 };
 
@@ -21,10 +23,13 @@ public:
 		m_enabled = enable;
 		m_targetLinear = powf(10.0f, targetDbfs / 20.0f) * 32767.0f;
 		m_maxGain = powf(10.0f, maxGainDb / 20.0f);
+		m_minGain = powf(10.0f, -maxGainDb / 20.0f);  // symmetric limit
 		// Convert time constants to per-frame (20ms) smoothing coefficients
-		// alpha = 1 - exp(-20 / T)
+		// alpha = 1 - exp(-frameDuration / timeConstant)
 		m_attackAlpha  = (attackMs  > 0.0f) ? 1.0f - expf(-20.0f / attackMs)  : 1.0f;
 		m_releaseAlpha = (releaseMs > 0.0f) ? 1.0f - expf(-20.0f / releaseMs) : 1.0f;
+		// Noise gate threshold: -50 dBFS
+		m_noiseGateLinear = powf(10.0f, -50.0f / 20.0f) * 32767.0f;
 	}
 
 	// Process 160 PCM samples in-place. streamId for per-stream gain tracking.
@@ -40,52 +45,68 @@ public:
 			state.gain = 1.0f;
 		}
 
-		// Measure RMS
-		float sum = 0.0f;
+		// Measure RMS and peak
+		float sumSq = 0.0f;
+		float peak = 0.0f;
 		for (int i = 0; i < count; i++)
 		{
 			float s = (float)samples[i];
-			sum += s * s;
+			sumSq += s * s;
+			float a = fabsf(s);
+			if (a > peak) peak = a;
 		}
-		float rms = sqrtf(sum / count);
+		float rms = sqrtf(sumSq / count);
 
-		if (rms < 1.0f)
-			return; // silence, don't adjust gain
+		// Noise gate: don't adjust gain below threshold (avoids amplifying noise/silence)
+		if (rms < m_noiseGateLinear)
+			return;
 
-		// Desired gain to reach target level
-		float desiredGain = m_targetLinear / rms;
-		if (desiredGain > m_maxGain)
-			desiredGain = m_maxGain;
-		if (desiredGain < 0.01f)
-			desiredGain = 0.01f;
+		// Desired gain to reach target RMS level
+		float desiredGain = std::clamp(m_targetLinear / rms, m_minGain, m_maxGain);
 
-		// Smooth gain transition (attack = getting quieter, release = getting louder)
+		// Peak limiter: reduce gain if it would clip the loudest sample
+		float peakLimit = 32000.0f / std::max(peak, 1.0f);
+		if (desiredGain > peakLimit)
+			desiredGain = peakLimit;
+
+		// Smooth gain transition
+		// Attack (gain decreasing → loud input): fast response to prevent clipping
+		// Release (gain increasing → quiet input): slow recovery for natural sound
 		float alpha = (desiredGain < state.gain) ? m_attackAlpha : m_releaseAlpha;
 		state.gain += alpha * (desiredGain - state.gain);
 
-		// Apply gain
+		// Apply gain with hard clip protection
 		for (int i = 0; i < count; i++)
 		{
 			float s = samples[i] * state.gain;
-			if (s > 32767.0f) s = 32767.0f;
-			else if (s < -32767.0f) s = -32767.0f;
-			samples[i] = (int16_t)s;
+			samples[i] = (int16_t)std::clamp(s, -32767.0f, 32767.0f);
 		}
 	}
 
-	// Clean up finished streams
+	// Clean up a specific stream (e.g. on stream close)
 	void RemoveStream(uint16_t streamId)
 	{
 		m_streams.erase(streamId);
+	}
+
+	// Remove streams not seen for a while (call periodically to prevent memory growth)
+	void Cleanup()
+	{
+		// Simple approach: if map grows beyond reasonable size, clear all
+		// (streams re-create their state on next Process call)
+		if (m_streams.size() > 100)
+			m_streams.clear();
 	}
 
 	bool IsEnabled() const { return m_enabled; }
 
 private:
 	bool  m_enabled = false;
-	float m_targetLinear = 3277.0f; // -20 dBFS default
-	float m_maxGain = 4.0f;        // +12 dB default
+	float m_targetLinear = 3277.0f;    // -20 dBFS
+	float m_maxGain = 4.0f;           // +12 dB
+	float m_minGain = 0.25f;          // -12 dB (symmetric)
 	float m_attackAlpha = 0.33f;
 	float m_releaseAlpha = 0.04f;
+	float m_noiseGateLinear = 100.0f;  // -50 dBFS
 	std::unordered_map<uint16_t, AGCState> m_streams;
 };
