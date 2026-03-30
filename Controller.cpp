@@ -582,7 +582,7 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	}
 	else
 	{
-		md380_encode_fec(ambe2, packet->GetAudioSamples());
+		md380_encode_fec(ambe2, const_cast<int16_t*>(packet->GetAudioSamples()));
 		packet->SetDMRData(ambe2);
 	}
 	{
@@ -633,7 +633,7 @@ void CController::AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet)
 		md380_encode_fec(ambe2, tmp);
 	}
 	else
-		md380_encode_fec(ambe2, p);
+		md380_encode_fec(ambe2, const_cast<int16_t*>(p));
 
 	packet->SetDMRData(ambe2);
 
@@ -646,7 +646,7 @@ void CController::AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet)
 void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 {
 	int16_t tmp[160];
-	md380_decode_fec(packet->GetDMRData(), tmp);
+	md380_decode_fec(const_cast<uint8_t*>(packet->GetDMRData()), tmp);
 	if (ambe_out_num != 256)
 	{
 		for (int i=0; i<160; i++)
@@ -970,7 +970,7 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		// so DMR/YSF output has correct levels (not the original hot passthrough)
 		{
 			uint8_t ambe2[9];
-			md380_encode_fec(ambe2, packet->GetAudioSamples());
+			md380_encode_fec(ambe2, const_cast<int16_t*>(packet->GetAudioSamples()));
 			packet->SetDMRData(ambe2);
 		}
 		codec2_queue.push(packet);
