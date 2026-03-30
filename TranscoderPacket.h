@@ -40,6 +40,7 @@ public:
 	const int16_t *GetUSRPData() const;
 	void SetDStarData(const uint8_t *dstar);
 	void SetDMRData(const uint8_t *dmr);
+	void ResetDMR() { dmr_set = false; }
 	void SetP25Data(const uint8_t *p25);
 	void SetM17Data(const uint8_t *m17);
 	void SetUSRPData(const int16_t *usrp);
