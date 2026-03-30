@@ -58,7 +58,8 @@ bool CController::Start()
 	c2Future        = std::async(std::launch::async, &CController::ProcessC2Thread,     this);
 	imbeFuture      = std::async(std::launch::async, &CController::ProcessIMBEThread,   this);
 	usrpFuture      = std::async(std::launch::async, &CController::ProcessUSRPThread,   this);
-	swambe2Future   = std::async(std::launch::async, &CController::ProcessSWAMBE2Thread,this);
+	if (!dmrsf_device)
+		swambe2Future = std::async(std::launch::async, &CController::ProcessSWAMBE2Thread, this);
 	return false;
 }
 
@@ -72,8 +73,8 @@ void CController::Stop()
 		c2Future.get();
 
 	tcClient.Close();
-	dstar_device->CloseDevice();
-	dmrsf_device->CloseDevice();
+	if (dstar_device) dstar_device->CloseDevice();
+	if (dmrsf_device) dmrsf_device->CloseDevice();
 	dstar_device.reset();
 	dmrsf_device.reset();
 }
@@ -386,7 +387,6 @@ bool CController::InitVocoders()
 		else
 			dstar_device = std::unique_ptr<CDVDevice>(new CDV3003(Encoding::dstar));
 
-		md380_init();
 		ambe_in_num = calcNumerator(g_Conf.GetGain(EGainType::dmrin));
 		ambe_out_num = calcNumerator(g_Conf.GetGain(EGainType::dmrout));
 
