@@ -6,6 +6,22 @@
  *   Adapted by K7VE from G4KLX dv3000d
  */
 
+// tcd - a hybid transcoder using DVSI hardware and Codec2 software
+// Copyright © 2022 Thomas A. Early N7TAE
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #include <sys/select.h>
 #include <fcntl.h>
 #include <termios.h>
@@ -88,12 +104,12 @@ uint8_t CDV3003::MapPacketToChannel(const std::shared_ptr<CTranscoderPacket> &pa
 	char mod = packet->GetModule();
 	// Check explicit channel override (set by AddPacketToChannel)
 	{
-		std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(target_mutex));
-		auto it = const_cast<std::unordered_map<CTranscoderPacket*,uint8_t>&>(target_channel).find(packet.get());
-		if (it != const_cast<std::unordered_map<CTranscoderPacket*,uint8_t>&>(target_channel).end())
+		std::lock_guard<std::mutex> lock(target_mutex);
+		auto it = target_channel.find(packet.get());
+		if (it != target_channel.end())
 		{
 			uint8_t ch = it->second;
-			const_cast<std::unordered_map<CTranscoderPacket*,uint8_t>&>(target_channel).erase(it);
+			target_channel.erase(it);
 			return ch;
 		}
 	}

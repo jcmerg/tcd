@@ -83,6 +83,7 @@ protected:
 	void AudiotoIMBE(std::shared_ptr<CTranscoderPacket> packet);
 	void USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet);
 	void AudiotoUSRP(std::shared_ptr<CTranscoderPacket> packet);
+	void SvxToAudio(std::shared_ptr<CTranscoderPacket> packet);
 	void SendToReflector(std::shared_ptr<CTranscoderPacket> packet);
 #ifdef USE_SW_AMBE2
     std::future<void> swambe2Future;
