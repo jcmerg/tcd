@@ -63,6 +63,7 @@ protected:
 	CPacketQueue usrp_queue;
 	std::mutex send_mux;
 	std::mutex p25vocoder_mux;
+	std::mutex md380_mux;
 	int32_t ambe_in_num, ambe_out_num, usrp_rx_num, usrp_tx_num, dmr_reencode_num;
 	imbe_vocoder p25vocoder;
 	CAGC m_agc;

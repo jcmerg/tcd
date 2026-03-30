@@ -584,6 +584,7 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	}
 	else
 	{
+		std::lock_guard<std::mutex> lock(md380_mux);
 		md380_encode_fec(ambe2, const_cast<int16_t*>(packet->GetAudioSamples()));
 		packet->SetDMRData(ambe2);
 	}
@@ -627,16 +628,18 @@ void CController::AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet)
 	uint8_t ambe2[9];
 	const int16_t *p = packet->GetAudioSamples();
 
-	if (ambe_in_num != 256)
 	{
-		int16_t tmp[160];
-		for(int i = 0; i < 160; ++i)
-			tmp[i] = int16_t((p[i] * ambe_in_num) >> 8);
-		md380_encode_fec(ambe2, tmp);
+		std::lock_guard<std::mutex> lock(md380_mux);
+		if (ambe_in_num != 256)
+		{
+			int16_t tmp[160];
+			for(int i = 0; i < 160; ++i)
+				tmp[i] = int16_t((p[i] * ambe_in_num) >> 8);
+			md380_encode_fec(ambe2, tmp);
+		}
+		else
+			md380_encode_fec(ambe2, const_cast<int16_t*>(p));
 	}
-	else
-		md380_encode_fec(ambe2, const_cast<int16_t*>(p));
-
 	packet->SetDMRData(ambe2);
 
 	// we might be all done...
@@ -648,7 +651,10 @@ void CController::AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet)
 void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 {
 	int16_t tmp[160];
-	md380_decode_fec(const_cast<uint8_t*>(packet->GetDMRData()), tmp);
+	{
+		std::lock_guard<std::mutex> lock(md380_mux);
+		md380_decode_fec(const_cast<uint8_t*>(packet->GetDMRData()), tmp);
+	}
 	if (ambe_out_num != 256)
 	{
 		for (int i=0; i<160; i++)
@@ -975,6 +981,7 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		{
 			uint8_t ambe2[9];
 			const int16_t *pcm = packet->GetAudioSamples();
+			std::lock_guard<std::mutex> lock(md380_mux);
 			if (dmr_reencode_num != 256)
 			{
 				int16_t tmp[160];
