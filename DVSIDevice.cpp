@@ -673,15 +673,15 @@ void CDVDevice::ReadDevice()
 	while (keep_running)
 	{
 		// Wait for incoming data via FTDI event notification
+		// FT_EVENT_RXCHAR fires per byte — wait for event then let bytes accumulate
 		DWORD RxBytes = 0;
 		FT_GetQueueStatus(ftHandle, &RxBytes);
 
-		while (0 == RxBytes && keep_running)
+		while (RxBytes < 5 && keep_running)  // minimum packet = 5 bytes (header)
 		{
-			// Block on event with timeout (no CPU burn)
 			struct timespec ts;
 			clock_gettime(CLOCK_REALTIME, &ts);
-			long wait_ms = (buffer_depth > 0) ? 20 : 200;
+			long wait_ms = (buffer_depth > 0) ? 50 : 500;
 			ts.tv_nsec += wait_ms * 1000000L;
 			while (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
 
@@ -689,14 +689,19 @@ void CDVDevice::ReadDevice()
 			pthread_cond_timedwait(&m_rxEvent.eCondVar, &m_rxEvent.eMutex, &ts);
 			pthread_mutex_unlock(&m_rxEvent.eMutex);
 
+			if (!keep_running)
+				return;
+
 			FT_GetQueueStatus(ftHandle, &RxBytes);
+
+			// After event, let remaining bytes of packet arrive
+			if (RxBytes > 0 && RxBytes < 5)
+				std::this_thread::sleep_for(std::chrono::microseconds(500));
 
 			// Timeout recovery
 			if (0 == RxBytes && buffer_depth > 0)
 				buffer_depth = 0;
 		}
-		if (!keep_running)
-			return;
 
 		SDV_Packet p;
 		if (! GetResponse(p))
