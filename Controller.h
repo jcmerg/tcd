@@ -53,6 +53,8 @@ protected:
 	CTCClient tcClient;
 	std::unordered_map<char, std::unique_ptr<CCodec2>> c2_16, c2_32;
 	std::unique_ptr<CDVDevice> dstar_device, dmrsf_device;
+	bool mixed_mode = false;
+	char mixed_dstar_module = ' ';
 
 	CPacketQueue codec2_queue;
 
@@ -81,7 +83,6 @@ protected:
 	void AudiotoIMBE(std::shared_ptr<CTranscoderPacket> packet);
 	void USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet);
 	void AudiotoUSRP(std::shared_ptr<CTranscoderPacket> packet);
-	void SvxToAudio(std::shared_ptr<CTranscoderPacket> packet);
 	void SendToReflector(std::shared_ptr<CTranscoderPacket> packet);
 #ifdef USE_SW_AMBE2
     std::future<void> swambe2Future;

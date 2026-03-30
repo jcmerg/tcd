@@ -38,8 +38,20 @@
 
 extern CConfigure g_Conf;
 
-CDVDevice::CDVDevice(Encoding t) : type(t), ftHandle(nullptr), buffer_depth(0), keep_running(true)
+CDVDevice::CDVDevice(Encoding t) : type(t), devtype(Edvtype::dv3000), ftHandle(nullptr), buffer_depth(0), keep_running(true)
 {
+}
+
+uint8_t CDVDevice::MapPacketToChannel(const std::shared_ptr<CTranscoderPacket> &packet) const
+{
+	const std::string modules(g_Conf.GetTCMods());
+	auto index = modules.find(packet->GetModule());
+	return (index != std::string::npos) ? (uint8_t)index : 0xFF;
+}
+
+bool CDVDevice::ConfigureChannel(uint8_t pkt_ch, Encoding enc, int8_t in_gain, int8_t out_gain)
+{
+	return ConfigureVocoder(pkt_ch, enc, in_gain, out_gain);
 }
 
 CDVDevice::~CDVDevice()
@@ -220,13 +232,7 @@ bool CDVDevice::OpenDevice(const std::string &serialno, const std::string &desc,
 		return true;
 	}
 
-	// NO TIMEOUTS! We are using blocking I/O!!!
-	// status = FT_SetTimeouts(ftHandle, 200, 200 );
-	// if (status != FT_OK)
-	// {
-	// 	FTDI_Error("FT_SetTimeouts", status);
-	// 	return false;
-	// }
+	// No FT_SetTimeouts - we use blocking I/O with FT_GetQueueStatus polling in ReadDevice
 
 	description.assign(desc);
 	description.append(" ");
@@ -234,13 +240,24 @@ bool CDVDevice::OpenDevice(const std::string &serialno, const std::string &desc,
 
 	std::cout << "Opened " << description << " at " << baudrate << " baud with a " << maxsize << " byte max transfer size" << std::endl;
 
+	devtype = dvtype;
+
 	if (InitDevice())
 		return true;
 
 	const uint8_t limit = (Edvtype::dv3000 == dvtype) ? PKT_CHANNEL0 : PKT_CHANNEL2;
 	for (uint8_t ch=PKT_CHANNEL0; ch<=limit; ch++)
 	{
-		if (ConfigureVocoder(ch, type, in_gain, out_gain))
+		Encoding ch_enc = GetChannelEncoding(ch - PKT_CHANNEL0);
+		// Use caller's gains for default codec, look up alternate gains for mixed channels
+		int8_t ig = in_gain, og = out_gain;
+		if (ch_enc != type)
+		{
+			// Mixed channel: use D-Star gains from config
+			ig = int8_t(g_Conf.GetGain(ch_enc == Encoding::dstar ? EGainType::dstarin : EGainType::dmrin));
+			og = int8_t(g_Conf.GetGain(ch_enc == Encoding::dstar ? EGainType::dstarout : EGainType::dmrout));
+		}
+		if (ConfigureVocoder(ch, ch_enc, ig, og))
 			return true;
 	}
 	return false;
@@ -249,6 +266,17 @@ bool CDVDevice::OpenDevice(const std::string &serialno, const std::string &desc,
 bool CDVDevice::InitDevice()
 {
 	SDV_Packet responsePacket, ctrlPacket;
+
+	// ********** flush serial buffer (needed for DV3003) *************
+	if (Edvtype::dv3003 == devtype)
+	{
+		uint8_t zeros[350];
+		memset(zeros, 0, sizeof(zeros));
+		DWORD written = 0;
+		FT_Write(ftHandle, zeros, sizeof(zeros), &written);
+		FT_Purge(ftHandle, FT_PURGE_RX | FT_PURGE_TX);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
 
 	// ********** soft reset *************
     ctrlPacket.start_byte = PKT_HEADER;
@@ -449,6 +477,22 @@ bool CDVDevice::ConfigureVocoder(uint8_t pkt_ch, Encoding type, int8_t in_gain, 
 		return true;
 	};
 
+	// DV3003 D-Star channels need companding disabled
+	if (Edvtype::dv3003 == devtype && Encoding::dstar == type)
+	{
+		SDV_Packet compandPkt, compandResp;
+		compandPkt.start_byte = PKT_HEADER;
+		compandPkt.header.payload_length = htons(3);
+		compandPkt.header.packet_type = PKT_CONTROL;
+		compandPkt.field_id = pkt_ch;
+		compandPkt.payload.ctrl.data.paritymode[0] = PKT_COMPAND;
+		compandPkt.payload.ctrl.data.paritymode[1] = 0x0;  // companding OFF
+		DWORD cw = 0;
+		FT_Write(ftHandle, &compandPkt, 7, &cw);
+		if (GetResponse(compandResp))
+			std::cerr << "Warning: no response to PKT_COMPAND on channel " << (unsigned int)(pkt_ch - PKT_CHANNEL0) << std::endl;
+	}
+
 	std::cout << description << " channel " << (unsigned int)(pkt_ch - PKT_CHANNEL0) << " is now configured for " << ((Encoding::dstar == type) ? "D-Star" : "DMR/YSF") << std::endl;
 
 	return false;
@@ -467,6 +511,8 @@ bool CDVDevice::GetResponse(SDV_Packet &packet)
 			FTDI_Error("Reading packet start byte", status);
 			return true;
 		}
+		if (0 == bytes_read)
+			return true;
 
 		if (packet.start_byte == PKT_HEADER)
 			break;
@@ -486,6 +532,8 @@ bool CDVDevice::GetResponse(SDV_Packet &packet)
 			FTDI_Error("Error reading response packet header", status);
 			return true;
 		}
+		if (0 == bytes_read)
+			return true;
 		bytesLeft -= bytes_read;
 	}
 
@@ -503,6 +551,8 @@ bool CDVDevice::GetResponse(SDV_Packet &packet)
 			FTDI_Error("Error reading packet payload", status);
 			return true;
 		}
+		if (0 == bytes_read)
+			return true;
 
         bytesLeft -= bytes_read;
     }
@@ -574,17 +624,17 @@ void CDVDevice::FeedDevice()
 		{
 			while (keep_running)	// wait until there is room
 			{
-				if (buffer_depth < 2)
+				if (buffer_depth < ((Edvtype::dv3003 == devtype) ? 5 : 2))
 					break;
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(5));
+				std::this_thread::sleep_for(std::chrono::milliseconds(2));
 			}
 
 			if (keep_running)
 			{
-				auto index = modules.find(packet->GetModule());
+				auto index = MapPacketToChannel(packet);
 				// save the packet in the vocoder's queue while the vocoder does its magic
-				if (std::string::npos == index)
+				if (index == 0xFF)
 				{
 					std::cerr << "Module '" << packet->GetModule() << "' is not configured on " << description << std::endl;
 				}
@@ -592,11 +642,12 @@ void CDVDevice::FeedDevice()
 				{
 					PushWaitingPacket(index, packet);
 
-					const bool needs_audio = (Encoding::dstar==type) ? packet->DStarIsSet() : packet->DMRIsSet();
+					Encoding ch_enc = GetChannelEncoding(index);
+					const bool needs_audio = (Encoding::dstar==ch_enc) ? packet->DStarIsSet() : packet->DMRIsSet();
 
 					if (needs_audio)
 					{
-						SendData(index, (Encoding::dstar==type) ? packet->GetDStarData() : packet->GetDMRData());
+						SendData(index, (Encoding::dstar==ch_enc) ? packet->GetDStarData() : packet->GetDMRData());
 					}
 					else
 					{
@@ -615,6 +666,7 @@ void CDVDevice::ReadDevice()
 	{
 		// wait for something to read...
 		DWORD RxBytes = 0;
+		unsigned int wait_count = 0;
 		while (0 == RxBytes)
 		{
 			auto status = FT_GetQueueStatus(ftHandle, &RxBytes);
@@ -627,9 +679,23 @@ void CDVDevice::ReadDevice()
 
 			if (0 == RxBytes)
 			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(3));
+				std::this_thread::sleep_for(std::chrono::milliseconds(2));
 				if (! keep_running)
 					return;
+				// Timeout recovery: if chip hasn't responded in 500ms while packets are in-flight
+				if (buffer_depth > 0 && ++wait_count > 250)
+				{
+					buffer_depth = 0;
+					wait_count = 0;
+				}
+				else if (buffer_depth == 0)
+				{
+					wait_count = 0;
+				}
+			}
+			else
+			{
+				wait_count = 0;
 			}
 		}
 

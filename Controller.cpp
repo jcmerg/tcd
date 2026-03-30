@@ -289,37 +289,6 @@ bool CController::InitVocoders()
 		return true;
 	}
 
-	if (2 != deviceset.size())
-	{
-#ifdef USE_SW_AMBE2
-		if(deviceset.size() == 1){
-			std::cout << "Using one DVSI device and md380_vocoder" << std::endl;
-		}
-#else
-		std::cerr << "Could not find exactly two DVSI devices" << std::endl;
-		return true;
-#endif
-	}
-
-	const auto desc(deviceset.front().second);
-	if (deviceset.back().second.compare(desc))
-	{
-		if (desc.compare(0, 9, "USB-3006 ")) // the USB-3006 device doesn't need this check
-		{
-			std::cout << "Both devices should to be the same type: " << desc << " != " << deviceset.back().second << std::endl;
-		}
-	}
-
-	Edvtype dvtype = Edvtype::dv3003;
-	if (0==desc.compare("ThumbDV") || 0==desc.compare("DVstick-30") || 0==desc.compare("USB-3000") || 0==desc.compare("FT230X Basic UART") || 0==desc.compare("FT232R USB UART"))
-		dvtype = Edvtype::dv3000;
-
-	if (modules.size() > ((Edvtype::dv3000 == dvtype) ? 1 : 3))
-	{
-		std::cerr << "Too many transcoded modules for the devices" << std::endl;
-		return true;
-	}
-
 	for (unsigned int i=0; i<modules.size(); i++)
 	{
 		auto c = modules.at(i);
@@ -329,62 +298,119 @@ bool CController::InitVocoders()
 		}
 	}
 
-	//initialize each device
-	while (! deviceset.empty())
+	// Classify each device by type
+	std::pair<std::string,std::string> dv3000_dev, dv3003_dev;
+	for (const auto &dev : deviceset)
 	{
-		if (Edvtype::dv3000 == dvtype)
-		{
-			dstar_device = std::unique_ptr<CDVDevice>(new CDV3000(Encoding::dstar));
-#ifdef USE_SW_AMBE2
-			md380_init();
-			ambe_in_num = calcNumerator(g_Conf.GetGain(EGainType::dmrin));
-			ambe_out_num = calcNumerator(g_Conf.GetGain(EGainType::dmrout));
-#else
-			dmrsf_device = std::unique_ptr<CDVDevice>(new CDV3000(Encoding::dmrsf));
-#endif
-		}
+		const auto &desc = dev.second;
+		if (0==desc.compare("ThumbDV") || 0==desc.compare("DVstick-30") || 0==desc.compare("USB-3000")
+			|| 0==desc.compare("FT230X Basic UART") || 0==desc.compare("FT232R USB UART"))
+			dv3000_dev = dev;
 		else
-		{
-			dstar_device = std::unique_ptr<CDVDevice>(new CDV3003(Encoding::dstar));
-#ifdef USE_SW_AMBE2
-			md380_init();
-#else
-			dmrsf_device = std::unique_ptr<CDVDevice>(new CDV3003(Encoding::dmrsf));
-#endif
-		}
-
-		if (dstar_device)
-		{
-			if (dstar_device->OpenDevice(deviceset.front().first, deviceset.front().second, dvtype, int8_t(g_Conf.GetGain(EGainType::dstarin)), int8_t(g_Conf.GetGain(EGainType::dstarout))))
-				return true;
-			deviceset.pop_front();
-		}
-		else
-		{
-			std::cerr << "Could not create DVSI devices!" << std::endl;
-			return true;
-		}
-#ifndef USE_SW_AMBE2
-		if (dmrsf_device)
-		{
-			if (dmrsf_device->OpenDevice(deviceset.front().first, deviceset.front().second, dvtype, int8_t(g_Conf.GetGain(EGainType::dmrin)), int8_t(g_Conf.GetGain(EGainType::dmrout))))
-				return true;
-			deviceset.pop_front();
-		}
-		else
-		{
-			std::cerr << "Could not create DVSI devices!" << std::endl;
-			return true;
-		}
-#endif
+			dv3003_dev = dev;
 	}
 
-	// and start them (or it) up!
-	dstar_device->Start();
+	// Mixed mode: DV3000 (D-Star) + DV3003 (1x D-Star + 2x DMR) = 2 modules
+	if (!dv3000_dev.first.empty() && !dv3003_dev.first.empty())
+	{
+		std::cout << "Mixed mode: " << dv3000_dev.second << " (" << dv3000_dev.first << ") + "
+		          << dv3003_dev.second << " (" << dv3003_dev.first << ")" << std::endl;
 
-#ifndef USE_SW_AMBE2
-	dmrsf_device->Start();
+		// DV3000: D-Star vocoder for module A (first module)
+		dstar_device = std::unique_ptr<CDVDevice>(new CDV3000(Encoding::dstar));
+		if (dstar_device->OpenDevice(dv3000_dev.first, dv3000_dev.second, Edvtype::dv3000,
+				int8_t(g_Conf.GetGain(EGainType::dstarin)), int8_t(g_Conf.GetGain(EGainType::dstarout))))
+			return true;
+
+		// DV3003: ch0=D-Star (module B), ch1=DMR (module A), ch2=DMR (module B)
+		auto *dv3003 = new CDV3003(Encoding::dmrsf);
+		dmrsf_device = std::unique_ptr<CDVDevice>(dv3003);
+
+		// Set per-channel encoding BEFORE OpenDevice so ConfigureVocoder uses the right codec
+		dv3003->SetChannelEncoding(0, Encoding::dstar);
+		dv3003->SetChannelEncoding(1, Encoding::dmrsf);
+		dv3003->SetChannelEncoding(2, Encoding::dmrsf);
+
+		// Open with DMR gains (ConfigureVocoder will use per-channel encoding)
+		if (dmrsf_device->OpenDevice(dv3003_dev.first, dv3003_dev.second, Edvtype::dv3003,
+				int8_t(g_Conf.GetGain(EGainType::dmrin)), int8_t(g_Conf.GetGain(EGainType::dmrout))))
+			return true;
+
+		// Map modules to DV3003 channels
+		if (modules.size() >= 2)
+		{
+			char modA = modules[0], modB = modules[1];
+			dv3003->SetModuleDStarChannel(modB, 0);  // D-Star module B → ch0
+			dv3003->SetModuleDMRChannel(modA, 1);    // DMR module A → ch1
+			dv3003->SetModuleDMRChannel(modB, 2);    // DMR module B → ch2
+			mixed_mode = true;
+			mixed_dstar_module = modB;
+			std::cout << "  Module " << modA << ": D-Star(DV3000) + DMR(DV3003 ch1)" << std::endl;
+			std::cout << "  Module " << modB << ": D-Star(DV3003 ch0) + DMR(DV3003 ch2)" << std::endl;
+		}
+	}
+	// Two same-type devices
+	else if (deviceset.size() >= 2)
+	{
+		const auto &desc = deviceset.front().second;
+		Edvtype dvtype = Edvtype::dv3003;
+		if (0==desc.compare("ThumbDV") || 0==desc.compare("DVstick-30") || 0==desc.compare("USB-3000")
+			|| 0==desc.compare("FT230X Basic UART") || 0==desc.compare("FT232R USB UART"))
+			dvtype = Edvtype::dv3000;
+
+		if (Edvtype::dv3000 == dvtype) {
+			dstar_device = std::unique_ptr<CDVDevice>(new CDV3000(Encoding::dstar));
+			dmrsf_device = std::unique_ptr<CDVDevice>(new CDV3000(Encoding::dmrsf));
+		} else {
+			dstar_device = std::unique_ptr<CDVDevice>(new CDV3003(Encoding::dstar));
+			dmrsf_device = std::unique_ptr<CDVDevice>(new CDV3003(Encoding::dmrsf));
+		}
+
+		if (dstar_device->OpenDevice(deviceset.front().first, deviceset.front().second, dvtype,
+				int8_t(g_Conf.GetGain(EGainType::dstarin)), int8_t(g_Conf.GetGain(EGainType::dstarout))))
+			return true;
+		deviceset.pop_front();
+
+		if (dmrsf_device->OpenDevice(deviceset.front().first, deviceset.front().second, dvtype,
+				int8_t(g_Conf.GetGain(EGainType::dmrin)), int8_t(g_Conf.GetGain(EGainType::dmrout))))
+			return true;
+	}
+	// Single device with md380 (swambe2 mode)
+	else if (deviceset.size() == 1)
+	{
+#ifdef USE_SW_AMBE2
+		std::cout << "Using one DVSI device and md380_vocoder" << std::endl;
+		const auto &dev = deviceset.front();
+		Edvtype dvtype = Edvtype::dv3003;
+		if (0==dev.second.compare("ThumbDV") || 0==dev.second.compare("DVstick-30") || 0==dev.second.compare("USB-3000")
+			|| 0==dev.second.compare("FT230X Basic UART") || 0==dev.second.compare("FT232R USB UART"))
+			dvtype = Edvtype::dv3000;
+
+		if (Edvtype::dv3000 == dvtype)
+			dstar_device = std::unique_ptr<CDVDevice>(new CDV3000(Encoding::dstar));
+		else
+			dstar_device = std::unique_ptr<CDVDevice>(new CDV3003(Encoding::dstar));
+
+		md380_init();
+		ambe_in_num = calcNumerator(g_Conf.GetGain(EGainType::dmrin));
+		ambe_out_num = calcNumerator(g_Conf.GetGain(EGainType::dmrout));
+
+		if (dstar_device->OpenDevice(dev.first, dev.second, dvtype,
+				int8_t(g_Conf.GetGain(EGainType::dstarin)), int8_t(g_Conf.GetGain(EGainType::dstarout))))
+			return true;
+#else
+		std::cerr << "Need two DVSI devices (or one DV3000 + one DV3003). Build with swambe2=true for single device." << std::endl;
+		return true;
 #endif
+	}
+	else
+	{
+		std::cerr << "No suitable DVSI device configuration found" << std::endl;
+		return true;
+	}
+
+	dstar_device->Start();
+	dmrsf_device->Start();
 
 	deviceset.clear();
 
@@ -412,20 +438,34 @@ void CController::ReadReflectorThread()
 			switch (packet->GetCodecIn())
 			{
 			case ECodecType::dstar:
-				dstar_device->AddPacket(packet);
+				if (mixed_mode && packet->GetModule() == mixed_dstar_module)
+				{
+					auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+					dv3003->AddPacketToChannel(packet, 0);  // ch0 = D-Star
+				}
+				else
+					dstar_device->AddPacket(packet);
 				break;
 			case ECodecType::dmr:
 #ifdef USE_SW_AMBE2
 				swambe2_queue.push(packet);
 #else
-				dmrsf_device->AddPacket(packet);
+				if (mixed_mode)
+				{
+					auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+					char mod = packet->GetModule();
+					auto it = std::string(g_Conf.GetTCMods()).find(mod);
+					uint8_t dmr_ch = (it == 0) ? 1 : 2;  // modA→ch1, modB→ch2
+					dv3003->AddPacketToChannel(packet, dmr_ch);
+				}
+				else
+					dmrsf_device->AddPacket(packet);
 #endif
 				break;
 			case ECodecType::p25:
 				imbe_queue.push(packet);
 				break;
 			case ECodecType::usrp:
-			case ECodecType::svx:
 				usrp_queue.push(packet);
 				break;
 			case ECodecType::c2_1600:
@@ -553,7 +593,6 @@ void CController::ProcessC2Thread()
 			case ECodecType::dmr:
 			case ECodecType::p25:
 			case ECodecType::usrp:
-			case ECodecType::svx:
 				// codec_in was AMBE, so we need to calculate the the M17 data
 				AudiotoCodec2(packet);
 				break;
@@ -616,7 +655,6 @@ void CController::ProcessSWAMBE2Thread()
 			case ECodecType::dstar:
 			case ECodecType::p25:
 			case ECodecType::usrp:
-			case ECodecType::svx:
 				AudiotoSWAMBE2(packet);
 				break;
 
@@ -677,7 +715,6 @@ void CController::ProcessIMBEThread()
 			case ECodecType::dstar:
 			case ECodecType::dmr:
 			case ECodecType::usrp:
-			case ECodecType::svx:
 				AudiotoIMBE(packet);
 				break;
 
@@ -738,27 +775,6 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	imbe_queue.push(packet);
 }
 
-void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
-{
-	const int16_t *p = packet->GetUSRPData();
-	int16_t tmp[160];
-	memcpy(tmp, p, sizeof(tmp));
-
-	m_agc.Process(tmp, 160, packet->GetStreamId());
-	packet->SetAudioSamples(tmp, false);
-
-	dstar_device->AddPacket(packet);
-	codec2_queue.push(packet);
-
-#ifdef USE_SW_AMBE2
-	swambe2_queue.push(packet);
-#else
-	dmrsf_device->AddPacket(packet);
-#endif
-
-	imbe_queue.push(packet);
-}
-
 void CController::ProcessUSRPThread()
 {
 	while (keep_running)
@@ -777,10 +793,6 @@ void CController::ProcessUSRPThread()
 
 			case ECodecType::usrp:
 				USRPtoAudio(packet);
-				break;
-
-			case ECodecType::svx:
-				SvxToAudio(packet);
 				break;
 		}
 	}
@@ -822,7 +834,16 @@ void CController::RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet)
 #ifdef USE_SW_AMBE2
 		swambe2_queue.push(packet);
 #else
-		dmrsf_device->AddPacket(packet);
+		if (mixed_mode)
+		{
+			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+			char mod = packet->GetModule();
+			auto it = std::string(g_Conf.GetTCMods()).find(mod);
+			uint8_t dmr_ch = (it == 0) ? 1 : 2;
+			dv3003->AddPacketToChannel(packet, dmr_ch);
+		}
+		else
+			dmrsf_device->AddPacket(packet);
 #endif
 	}
 	else
@@ -848,7 +869,13 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
 		usrp_queue.push(packet);
-		dstar_device->AddPacket(packet);
+		if (mixed_mode && packet->GetModule() == mixed_dstar_module)
+		{
+			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+			dv3003->AddPacketToChannel(packet, 0);  // ch0 = D-Star
+		}
+		else
+			dstar_device->AddPacket(packet);
 	}
 	else
 	{
@@ -886,8 +913,6 @@ void CController::Dump(const std::shared_ptr<CTranscoderPacket> p, const std::st
 		line << " USRP";
 	if (ECodecType::usrp == in)
 		line << "*";
-	if (ECodecType::svx == in)
-		line << "(svx)";
 	if (p->IsSecond())
 		line << " IsSecond";
 	if (p->IsLast())
