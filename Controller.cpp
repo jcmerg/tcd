@@ -402,6 +402,10 @@ bool CController::InitVocoders()
 
 	// Always init md380 software vocoder (used for DMR re-encode after AGC)
 	md380_init();
+	if (dmrsf_device)
+		std::cout << "md380 vocoder: DMR re-encode after AGC" << std::endl;
+	else
+		std::cout << "md380 vocoder: primary DMR codec" << std::endl;
 
 	dstar_device->Start();
 	if (dmrsf_device)
