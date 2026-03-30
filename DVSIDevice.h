@@ -48,6 +48,7 @@ protected:
 	const Encoding type;
 	Edvtype devtype;
 	FT_HANDLE ftHandle;
+	EVENT_HANDLE m_rxEvent;
 	std::atomic<unsigned int> buffer_depth;
 	std::atomic<bool> keep_running;
 	CPacketQueue input_queue;

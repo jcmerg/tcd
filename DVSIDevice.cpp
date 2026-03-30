@@ -63,12 +63,15 @@ void CDVDevice::CloseDevice()
 {
 	input_queue.Shutdown();
 	keep_running = false;
+	pthread_cond_signal(&m_rxEvent.eCondVar);  // wake ReadDevice
 	if (ftHandle)
 	{
 		auto status = FT_Close(ftHandle);
 		if (FT_OK != status)
 			FTDI_Error("FT_Close", status);
 	}
+	pthread_mutex_destroy(&m_rxEvent.eMutex);
+	pthread_cond_destroy(&m_rxEvent.eCondVar);
 
 	if (feedFuture.valid())
 		feedFuture.get();
@@ -241,6 +244,11 @@ bool CDVDevice::OpenDevice(const std::string &serialno, const std::string &desc,
 	std::cout << "Opened " << description << " at " << baudrate << " baud with a " << maxsize << " byte max transfer size" << std::endl;
 
 	devtype = dvtype;
+
+	// Event notification for incoming data (reduces polling CPU)
+	pthread_mutex_init(&m_rxEvent.eMutex, NULL);
+	pthread_cond_init(&m_rxEvent.eCondVar, NULL);
+	FT_SetEventNotification(ftHandle, FT_EVENT_RXCHAR, (PVOID)&m_rxEvent);
 
 	if (InitDevice())
 		return true;
@@ -664,42 +672,31 @@ void CDVDevice::ReadDevice()
 {
 	while (keep_running)
 	{
-		// wait for something to read...
+		// Wait for incoming data via FTDI event notification
 		DWORD RxBytes = 0;
-		unsigned int wait_count = 0;
-		while (0 == RxBytes)
-		{
-			auto status = FT_GetQueueStatus(ftHandle, &RxBytes);
-			if (FT_OK != status)
-			{
-				FTDI_Error("FT_GetQueueStatus", status);
-				std::cerr << "Shutting down..." << std::endl;
-				raise(SIGTERM);
-			}
+		FT_GetQueueStatus(ftHandle, &RxBytes);
 
-			if (0 == RxBytes)
-			{
-				// Adaptive sleep: short when packets in-flight, longer when idle
-				int sleep_ms = (buffer_depth > 0) ? 1 : 10;
-				std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
-				if (! keep_running)
-					return;
-				// Timeout recovery: if chip hasn't responded in 500ms while packets are in-flight
-				if (buffer_depth > 0 && ++wait_count > 500)
-				{
-					buffer_depth = 0;
-					wait_count = 0;
-				}
-				else if (buffer_depth == 0)
-				{
-					wait_count = 0;
-				}
-			}
-			else
-			{
-				wait_count = 0;
-			}
+		while (0 == RxBytes && keep_running)
+		{
+			// Block on event with timeout (no CPU burn)
+			struct timespec ts;
+			clock_gettime(CLOCK_REALTIME, &ts);
+			long wait_ms = (buffer_depth > 0) ? 20 : 200;
+			ts.tv_nsec += wait_ms * 1000000L;
+			while (ts.tv_nsec >= 1000000000L) { ts.tv_sec++; ts.tv_nsec -= 1000000000L; }
+
+			pthread_mutex_lock(&m_rxEvent.eMutex);
+			pthread_cond_timedwait(&m_rxEvent.eCondVar, &m_rxEvent.eMutex, &ts);
+			pthread_mutex_unlock(&m_rxEvent.eMutex);
+
+			FT_GetQueueStatus(ftHandle, &RxBytes);
+
+			// Timeout recovery
+			if (0 == RxBytes && buffer_depth > 0)
+				buffer_depth = 0;
 		}
+		if (!keep_running)
+			return;
 
 		SDV_Packet p;
 		if (! GetResponse(p))
