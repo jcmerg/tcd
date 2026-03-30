@@ -99,29 +99,30 @@ sudo make install
 
 ```ini
 Port = 10100
-ServerAddress = 172.16.200.10    # IP of the urfd reflector
-Modules = FS                      # must match urfd.ini [Transcoder] section
+ServerAddress = 172.16.200.10   # IP of the urfd reflector
+Modules = FS                    # must match urfd.ini [Transcoder] section
 
 # Whitelist AMBE devices by serial (use 'tcd --list-devices' to find them)
-# For mixed mode, list both serials. Order does not matter — tcd auto-detects types.
+# For mixed mode, list both serials. Order does not matter.
 DeviceSerial = DQ015SBR
 DeviceSerial = DKB7FXGE
 
 # Static gain values in dB (-24 to +24)
-# With AGC enabled, these only need coarse codec-level matching.
-DStarGainIn   =  0
-DStarGainOut  =  0
-DmrYsfGainIn  =  0
-DmrYsfGainOut =  0
-UsrpTxGain    =  0
-UsrpRxGain    =  0
+# With AGC enabled, all gains should be 0.
+DStarGainIn     = 0
+DStarGainOut    = 0
+DmrYsfGainIn    = 0
+DmrYsfGainOut   = 0
+UsrpTxGain      = 0
+UsrpRxGain      = 0
+DmrReencodeGain = -10           # reduce loud DMR/YSF output (0 = disable re-encode)
 
 # AGC (Automatic Gain Control)
-AGC           = true
-AGCTarget     = -16
-AGCAttack     = 50
-AGCRelease    = 500
-AGCMaxGain    = 12
+AGC        = true
+AGCTarget  = -16
+AGCAttack  = 50
+AGCRelease = 500
+AGCMaxGain = 12
 ```
 
 ### Audio gain
@@ -148,6 +149,14 @@ Gain values (in dB, range -24 to +24) are applied at decode and encode stages:
 | `UsrpTxGain` | Transmit | Internal PCM → USRP | Adjust PCM level sent to USRP |
 
 **Note**: SvxReflector audio uses a separate codec path (`ECodecType::svx`) and is **not** affected by UsrpRxGain/UsrpTxGain. SVX gain is configured in urfd.ini (see urfd documentation).
+
+#### DMR Re-encode Gain
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `DmrReencodeGain` | `0` | Gain in dB applied before md380 DMR re-encode. Use negative values (e.g. `-10`) to reduce loud DMR/YSF output. Set to `0` to disable re-encode (passthrough, saves CPU). |
+
+When set to a non-zero value, DMR input is re-encoded from AGC-normalized PCM via the md380 software vocoder. This ensures DMR/YSF output has consistent levels instead of passing through the original (often hot) DMR data. Recommended: `-10` for typical setups.
 
 #### AGC (Automatic Gain Control)
 
@@ -186,11 +195,13 @@ sudo journalctl -u tcd -f          # follow logs
 
 - **Mixed-mode DV3000+DV3003**: Concurrent 2-module transcoding with per-channel codec configuration
 - **DV3003 D-Star support**: PKT_COMPAND fix, 350-byte flush, per-channel encoding
-- **md380 always linked**: Runtime device detection instead of compile-time flags. DMR re-encode after AGC for correct output levels.
+- **md380 always linked**: Runtime device detection instead of compile-time flags. DMR re-encode after AGC via `DmrReencodeGain` for correct output levels.
+- **Performance**: FTDI event notification (`FT_SetEventNotification`) instead of busy-poll, condition variables for FeedDevice, cached DV3003 pointer. ~5% CPU on Raspberry Pi 3.
+- **AGC improvements**: Noise gate (-50 dBFS), peak limiter, symmetric gain limits
 - **Thread safety**: Mutex around IMBE vocoder calls (race between C2 and IMBE threads)
 - **Error handling**: Retry limit with backoff in SendToReflector (was infinite loop), graceful queue overflow handling (was raise(SIGINT)), timeout recovery in ReadDevice
 - **FTDI robustness**: Auto-unbind ftdi_sio at startup, device whitelist by serial number, FTDI buffer flush on overflow
-- **Usability**: `--list-devices` CLI option, `DeviceSerial` config, improved error messages
+- **Usability**: `--list-devices` CLI option, `DeviceSerial` config, improved error messages, unified `build.sh` with auto-dependency install
 
 ## Copyright
 
