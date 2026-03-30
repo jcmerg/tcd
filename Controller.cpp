@@ -41,7 +41,7 @@ int32_t CController::calcNumerator(int32_t db) const
 	return int32_t(roundf(num));
 }
 
-CController::CController() : keep_running(true) {}
+CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256) {}
 
 bool CController::Start()
 {

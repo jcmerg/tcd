@@ -40,6 +40,7 @@ extern CConfigure g_Conf;
 
 CDVDevice::CDVDevice(Encoding t) : type(t), devtype(Edvtype::dv3000), ftHandle(nullptr), buffer_depth(0), keep_running(true)
 {
+	memset(&m_rxEvent, 0, sizeof(m_rxEvent));
 }
 
 uint8_t CDVDevice::MapPacketToChannel(const std::shared_ptr<CTranscoderPacket> &packet) const
@@ -63,15 +64,21 @@ void CDVDevice::CloseDevice()
 {
 	input_queue.Shutdown();
 	keep_running = false;
-	pthread_cond_signal(&m_rxEvent.eCondVar);  // wake ReadDevice
+	bool wasOpen = (ftHandle != nullptr);
+	if (wasOpen)
+		pthread_cond_signal(&m_rxEvent.eCondVar);  // wake ReadDevice
 	if (ftHandle)
 	{
 		auto status = FT_Close(ftHandle);
 		if (FT_OK != status)
 			FTDI_Error("FT_Close", status);
+		ftHandle = nullptr;
 	}
-	pthread_mutex_destroy(&m_rxEvent.eMutex);
-	pthread_cond_destroy(&m_rxEvent.eCondVar);
+	if (wasOpen)
+	{
+		pthread_mutex_destroy(&m_rxEvent.eMutex);
+		pthread_cond_destroy(&m_rxEvent.eCondVar);
+	}
 
 	if (feedFuture.valid())
 		feedFuture.get();
