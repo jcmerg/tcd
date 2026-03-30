@@ -977,20 +977,36 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		// Re-encode DMR from AGC'd PCM via md380 software vocoder
 		// Only when DmrReencodeGain is explicitly set (non-zero)
 		// AGC alone does not trigger re-encode to save CPU on low-power devices
+		// Re-encode DMR from AGC'd PCM via md380 software vocoder
 		if (dmr_reencode_num != 256)
 		{
 			uint8_t ambe2[9];
 			const int16_t *pcm = packet->GetAudioSamples();
 			std::lock_guard<std::mutex> lock(md380_mux);
-			if (dmr_reencode_num != 256)
+			// Save/restore md380 encoder state per stream to prevent crosstalk
+			// md380 firmware RAM at 0x20000000, 128KB
+			static constexpr uintptr_t MD380_RAM = 0x20000000;
+			static constexpr size_t MD380_RAM_SIZE = 0x20000;
+			uint16_t sid = packet->GetStreamId();
+			if (sid != md380_enc_streamid)
 			{
-				int16_t tmp[160];
-				for (int i = 0; i < 160; i++)
-					tmp[i] = (int16_t)((pcm[i] * dmr_reencode_num) >> 8);
-				md380_encode_fec(ambe2, tmp);
+				// Save current stream's state
+				if (md380_enc_streamid != 0)
+				{
+					auto &save = md380_state_cache[md380_enc_streamid];
+					save.resize(MD380_RAM_SIZE);
+					memcpy(save.data(), (void*)MD380_RAM, MD380_RAM_SIZE);
+				}
+				// Restore target stream's state (or init fresh)
+				auto it = md380_state_cache.find(sid);
+				if (it != md380_state_cache.end())
+					memcpy((void*)MD380_RAM, it->second.data(), MD380_RAM_SIZE);
+				md380_enc_streamid = sid;
 			}
-			else
-				md380_encode_fec(ambe2, const_cast<int16_t*>(pcm));
+			int16_t tmp[160];
+			for (int i = 0; i < 160; i++)
+				tmp[i] = (int16_t)((pcm[i] * dmr_reencode_num) >> 8);
+			md380_encode_fec(ambe2, tmp);
 			packet->SetDMRData(ambe2);
 		}
 		codec2_queue.push(packet);

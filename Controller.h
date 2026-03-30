@@ -64,6 +64,8 @@ protected:
 	std::mutex send_mux;
 	std::mutex p25vocoder_mux;
 	std::mutex md380_mux;
+	uint16_t md380_enc_streamid = 0;
+	std::unordered_map<uint16_t, std::vector<uint8_t>> md380_state_cache;
 	int32_t ambe_in_num, ambe_out_num, usrp_rx_num, usrp_tx_num, dmr_reencode_num;
 	imbe_vocoder p25vocoder;
 	CAGC m_agc;
