@@ -4,7 +4,7 @@ include tcd.mk
 
 GCC = g++
 
-# Shared source files from urfd (copied by 'make urfd-files')
+# Shared source files from urfd
 URFD_DIR ?= ../urfd/reflector
 URFD_FILES = IP.cpp IP.h TCPacketDef.h TCSocket.cpp TCSocket.h Timer.h
 
@@ -16,18 +16,26 @@ endif
 
 LDFLAGS = -lftd2xx -limbe_vocoder -pthread -lmd380_vocoder
 
-SRCS = $(wildcard *.cpp) $(wildcard codec2/*.cpp)
+# Explicit source list (includes urfd shared files)
+SRCS = Configure.cpp Controller.cpp DV3000.cpp DV3003.cpp DVSIDevice.cpp \
+       IP.cpp Main.cpp TCSocket.cpp TranscoderPacket.cpp \
+       codec2/codebooks.cpp codec2/codec2.cpp codec2/kiss_fft.cpp \
+       codec2/lpc.cpp codec2/nlp.cpp codec2/pack.cpp codec2/qbase.cpp \
+       codec2/quantise.cpp
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 EXE = tcd
 
-$(EXE) : urfd-files $(OBJS)
+# Copy urfd files first, then build
+all : urfd-files
+	$(MAKE) $(EXE)
+
+$(EXE) : $(OBJS)
 	$(GCC) $(OBJS) $(LDFLAGS) -o $@ -Xlinker --section-start=.firmware=0x0800C000 -Xlinker  --section-start=.sram=0x20000000
 
 %.o : %.cpp
 	$(GCC) $(CFLAGS) -c $< -o $@
 
-# Copy shared files from urfd if not present or outdated
 urfd-files :
 	@for f in $(URFD_FILES); do \
 		if [ ! -f $$f ] || [ $(URFD_DIR)/$$f -nt $$f ]; then \
@@ -41,7 +49,7 @@ clean :
 -include $(DEPS)
 
 # The install and uninstall targets need to be run by root
-install : $(EXE)
+install : all
 	cp $(EXE) $(BINDIR)
 	cp $(EXE).service /etc/systemd/system/
 	systemctl enable $(EXE)
