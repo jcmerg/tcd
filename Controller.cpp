@@ -560,13 +560,28 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		}
 	}
 	// the only thing left is to encode the two ambe, so push the packet onto both AMBE queues
-	dstar_device->AddPacket(packet);
+	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
+	{
+		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+		dv3003->AddPacketToChannel(packet, 0);
+	}
+	else
+		dstar_device->AddPacket(packet);
 
 #ifdef USE_SW_AMBE2
 	md380_encode_fec(ambe2, packet->GetAudioSamples());
 	packet->SetDMRData(ambe2);
 #else
-	dmrsf_device->AddPacket(packet);
+	if (mixed_mode)
+	{
+		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+		char mod = packet->GetModule();
+		auto it = std::string(g_Conf.GetTCMods()).find(mod);
+		uint8_t dmr_ch = (it == 0) ? 1 : 2;
+		dv3003->AddPacketToChannel(packet, dmr_ch);
+	}
+	else
+		dmrsf_device->AddPacket(packet);
 #endif
 	{
 		std::lock_guard<std::mutex> lock(p25vocoder_mux);
@@ -639,7 +654,13 @@ void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	m_agc.Process(tmp, 160, packet->GetStreamId());
 	packet->SetAudioSamples(tmp, false);
 
-	dstar_device->AddPacket(packet);
+	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
+	{
+		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+		dv3003->AddPacketToChannel(packet, 0);
+	}
+	else
+		dstar_device->AddPacket(packet);
 	codec2_queue.push(packet);
 	imbe_queue.push(packet);
 	usrp_queue.push(packet);
@@ -694,13 +715,28 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	}
 	m_agc.Process(tmp, 160, packet->GetStreamId());
 	packet->SetAudioSamples(tmp, false);
-	dstar_device->AddPacket(packet);
+	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
+	{
+		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+		dv3003->AddPacketToChannel(packet, 0);
+	}
+	else
+		dstar_device->AddPacket(packet);
 	codec2_queue.push(packet);
 
 #ifdef USE_SW_AMBE2
 	swambe2_queue.push(packet);
 #else
-	dmrsf_device->AddPacket(packet);
+	if (mixed_mode)
+	{
+		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+		char mod = packet->GetModule();
+		auto it = std::string(g_Conf.GetTCMods()).find(mod);
+		uint8_t dmr_ch = (it == 0) ? 1 : 2;
+		dv3003->AddPacketToChannel(packet, dmr_ch);
+	}
+	else
+		dmrsf_device->AddPacket(packet);
 #endif
 
 	usrp_queue.push(packet);
@@ -768,13 +804,28 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	m_agc.Process(tmp, 160, packet->GetStreamId());
 	packet->SetAudioSamples(tmp, false);
 
-	dstar_device->AddPacket(packet);
+	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
+	{
+		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+		dv3003->AddPacketToChannel(packet, 0);
+	}
+	else
+		dstar_device->AddPacket(packet);
 	codec2_queue.push(packet);
 
 #ifdef USE_SW_AMBE2
 	swambe2_queue.push(packet);
 #else
-	dmrsf_device->AddPacket(packet);
+	if (mixed_mode)
+	{
+		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+		char mod = packet->GetModule();
+		auto it = std::string(g_Conf.GetTCMods()).find(mod);
+		uint8_t dmr_ch = (it == 0) ? 1 : 2;
+		dv3003->AddPacketToChannel(packet, dmr_ch);
+	}
+	else
+		dmrsf_device->AddPacket(packet);
 #endif
 
 	imbe_queue.push(packet);
@@ -816,13 +867,28 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 	m_agc.Process(tmp, 160, packet->GetStreamId());
 	packet->SetAudioSamples(tmp, false);
 
-	dstar_device->AddPacket(packet);
+	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
+	{
+		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+		dv3003->AddPacketToChannel(packet, 0);  // ch0 = D-Star
+	}
+	else
+		dstar_device->AddPacket(packet);
 	codec2_queue.push(packet);
 
 #ifdef USE_SW_AMBE2
 	swambe2_queue.push(packet);
 #else
-	dmrsf_device->AddPacket(packet);
+	if (mixed_mode)
+	{
+		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+		char mod = packet->GetModule();
+		auto it = std::string(g_Conf.GetTCMods()).find(mod);
+		uint8_t dmr_ch = (it == 0) ? 1 : 2;
+		dv3003->AddPacketToChannel(packet, dmr_ch);
+	}
+	else
+		dmrsf_device->AddPacket(packet);
 #endif
 
 	imbe_queue.push(packet);
