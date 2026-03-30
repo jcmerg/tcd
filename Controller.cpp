@@ -968,7 +968,9 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 			packet->SetAudioSamples(tmp, false);
 		}
 		// Re-encode DMR from AGC'd PCM via md380 software vocoder
-		// so DMR/YSF output has correct levels (not the original hot passthrough)
+		// Only when DmrReencodeGain is explicitly set (non-zero)
+		// AGC alone does not trigger re-encode to save CPU on low-power devices
+		if (dmr_reencode_num != 256)
 		{
 			uint8_t ambe2[9];
 			const int16_t *pcm = packet->GetAudioSamples();
