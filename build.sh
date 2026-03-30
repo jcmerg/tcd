@@ -18,8 +18,8 @@ URFD_REPO="https://github.com/jcmerg/urfd.git"
 IMBE_REPO="https://github.com/jcmerg/imbe_vocoder.git"
 MD380_ARM_REPO="https://github.com/jcmerg/md380_vocoder.git"
 MD380_X64_REPO="https://github.com/jcmerg/md380_vocoder_dynarmic.git"
-FTDI_URL_X64="https://ftdichip.com/wp-content/uploads/2024/02/libftd2xx-x86_64-1.4.34.tgz"
-FTDI_URL_ARM="https://ftdichip.com/wp-content/uploads/2024/02/libftd2xx-arm-v7-hf-1.4.34.tgz"
+FTDI_URL_X64="https://ftdichip.com/wp-content/uploads/2025/03/libftd2xx-linux-x86_64-1.4.33.tgz"
+FTDI_URL_ARM="https://ftdichip.com/wp-content/uploads/2025/03/libftd2xx-linux-arm-v7-hf-1.4.33.tgz"
 INSTALL_DIR="/usr/local/bin"
 ARCH=$(uname -m)
 
@@ -53,13 +53,12 @@ if [ ! -f /usr/local/include/ftd2xx.h ]; then
     fi
     curl -sL "$FTDI_URL" -o ftdi.tgz
     tar xzf ftdi.tgz
-    cd release/build
-    cp libftd2xx.* /usr/local/lib/
-    cd ..
-    cp ftd2xx.h WinTypes.h /usr/local/include/
+    # Find the extracted directory (varies by version: release/, linux-x86_64/, etc.)
+    FTDI_DIR=$(tar tzf ftdi.tgz | head -1 | cut -d/ -f1)
+    cp "$FTDI_DIR"/libftd2xx.* /usr/local/lib/
+    cp "$FTDI_DIR"/ftd2xx.h "$FTDI_DIR"/WinTypes.h /usr/local/include/
     ldconfig
-    cd "$BUILDDIR"
-    rm -rf release ftdi.tgz
+    rm -rf "$FTDI_DIR" ftdi.tgz
     echo "libftd2xx installed"
 else
     echo "libftd2xx: already installed"
