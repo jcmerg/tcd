@@ -124,6 +124,7 @@ void CDV3000::ProcessPacket(const SDV_Packet &p)
 			if (11!=ntohs(p.header.payload_length) || PKT_CHAND!=p.field_id || 72!=p.payload.ambe3k.num_bits)
 				dump("Improper ambe packet:", &p, packet_size(p));
 			buffer_depth--;
+			buffer_cv.notify_one();
 			if (Encoding::dstar == type)
 				packet->SetDStarData(p.payload.ambe3k.data);
 			else
@@ -135,6 +136,7 @@ void CDV3000::ProcessPacket(const SDV_Packet &p)
 			if (322!=ntohs(p.header.payload_length) || PKT_SPEECHD!=p.field_id || 160!=p.payload.audio3k.num_samples)
 				dump("Improper audio packet:", &p, packet_size(p));
 			buffer_depth--;
+			buffer_cv.notify_one();
 			packet->SetAudioSamples(p.payload.audio3k.samples, true);
 		}
 		else

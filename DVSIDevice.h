@@ -50,6 +50,8 @@ protected:
 	FT_HANDLE ftHandle;
 	EVENT_HANDLE m_rxEvent;
 	std::atomic<unsigned int> buffer_depth;
+	std::mutex buffer_mutex;
+	std::condition_variable buffer_cv;
 	std::atomic<bool> keep_running;
 	CPacketQueue input_queue;
 	std::future<void> feedFuture, readFuture;

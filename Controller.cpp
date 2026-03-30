@@ -343,6 +343,7 @@ bool CController::InitVocoders()
 			dv3003->SetModuleDMRChannel(modB, 2);    // DMR module B → ch2
 			mixed_mode = true;
 			mixed_dstar_module = modB;
+			mixed_dv3003 = dv3003;
 			std::cout << "  Module " << modA << ": D-Star(DV3000) + DMR(DV3003 ch1)" << std::endl;
 			std::cout << "  Module " << modB << ": D-Star(DV3003 ch0) + DMR(DV3003 ch2)" << std::endl;
 		}
@@ -440,8 +441,8 @@ void CController::ReadReflectorThread()
 			case ECodecType::dstar:
 				if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 				{
-					auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-					dv3003->AddPacketToChannel(packet, 0);  // ch0 = D-Star
+					
+					mixed_dv3003->AddPacketToChannel(packet, 0);  // ch0 = D-Star
 				}
 				else
 					dstar_device->AddPacket(packet);
@@ -451,11 +452,11 @@ void CController::ReadReflectorThread()
 				{
 					if (mixed_mode)
 					{
-						auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+						
 						char mod = packet->GetModule();
 						auto it = std::string(g_Conf.GetTCMods()).find(mod);
 						uint8_t dmr_ch = (it == 0) ? 1 : 2;
-						dv3003->AddPacketToChannel(packet, dmr_ch);
+						mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
 					}
 					else
 						dmrsf_device->AddPacket(packet);
@@ -562,8 +563,8 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	// the only thing left is to encode the two ambe, so push the packet onto both AMBE queues
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
-		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-		dv3003->AddPacketToChannel(packet, 0);
+		
+		mixed_dv3003->AddPacketToChannel(packet, 0);
 	}
 	else
 		dstar_device->AddPacket(packet);
@@ -572,11 +573,11 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		if (mixed_mode)
 		{
-			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+			
 			char mod = packet->GetModule();
 			auto it = std::string(g_Conf.GetTCMods()).find(mod);
 			uint8_t dmr_ch = (it == 0) ? 1 : 2;
-			dv3003->AddPacketToChannel(packet, dmr_ch);
+			mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
 		}
 		else
 			dmrsf_device->AddPacket(packet);
@@ -658,8 +659,8 @@ void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
-		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-		dv3003->AddPacketToChannel(packet, 0);
+		
+		mixed_dv3003->AddPacketToChannel(packet, 0);
 	}
 	else
 		dstar_device->AddPacket(packet);
@@ -718,8 +719,8 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	packet->SetAudioSamples(tmp, false);
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
-		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-		dv3003->AddPacketToChannel(packet, 0);
+		
+		mixed_dv3003->AddPacketToChannel(packet, 0);
 	}
 	else
 		dstar_device->AddPacket(packet);
@@ -729,11 +730,11 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		if (mixed_mode)
 		{
-			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+			
 			char mod = packet->GetModule();
 			auto it = std::string(g_Conf.GetTCMods()).find(mod);
 			uint8_t dmr_ch = (it == 0) ? 1 : 2;
-			dv3003->AddPacketToChannel(packet, dmr_ch);
+			mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
 		}
 		else
 			dmrsf_device->AddPacket(packet);
@@ -808,8 +809,8 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
-		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-		dv3003->AddPacketToChannel(packet, 0);
+		
+		mixed_dv3003->AddPacketToChannel(packet, 0);
 	}
 	else
 		dstar_device->AddPacket(packet);
@@ -819,11 +820,11 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		if (mixed_mode)
 		{
-			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+			
 			char mod = packet->GetModule();
 			auto it = std::string(g_Conf.GetTCMods()).find(mod);
 			uint8_t dmr_ch = (it == 0) ? 1 : 2;
-			dv3003->AddPacketToChannel(packet, dmr_ch);
+			mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
 		}
 		else
 			dmrsf_device->AddPacket(packet);
@@ -872,8 +873,8 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
-		auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-		dv3003->AddPacketToChannel(packet, 0);  // ch0 = D-Star
+		
+		mixed_dv3003->AddPacketToChannel(packet, 0);  // ch0 = D-Star
 	}
 	else
 		dstar_device->AddPacket(packet);
@@ -883,11 +884,11 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		if (mixed_mode)
 		{
-			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+			
 			char mod = packet->GetModule();
 			auto it = std::string(g_Conf.GetTCMods()).find(mod);
 			uint8_t dmr_ch = (it == 0) ? 1 : 2;
-			dv3003->AddPacketToChannel(packet, dmr_ch);
+			mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
 		}
 		else
 			dmrsf_device->AddPacket(packet);
@@ -935,11 +936,11 @@ void CController::RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet)
 		{
 			if (mixed_mode)
 			{
-				auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
+				
 				char mod = packet->GetModule();
 				auto it = std::string(g_Conf.GetTCMods()).find(mod);
 				uint8_t dmr_ch = (it == 0) ? 1 : 2;
-				dv3003->AddPacketToChannel(packet, dmr_ch);
+				mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
 			}
 			else
 				dmrsf_device->AddPacket(packet);
@@ -990,8 +991,8 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		usrp_queue.push(packet);
 		if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 		{
-			auto *dv3003 = dynamic_cast<CDV3003*>(dmrsf_device.get());
-			dv3003->AddPacketToChannel(packet, 0);  // ch0 = D-Star
+			
+			mixed_dv3003->AddPacketToChannel(packet, 0);  // ch0 = D-Star
 		}
 		else
 			dstar_device->AddPacket(packet);

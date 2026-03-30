@@ -630,12 +630,11 @@ void CDVDevice::FeedDevice()
 
 		if (packet)
 		{
-			while (keep_running)	// wait until there is room
-			{
-				if (buffer_depth < ((Edvtype::dv3003 == devtype) ? 5 : 2))
-					break;
-
-				std::this_thread::sleep_for(std::chrono::milliseconds(2));
+			{	// wait until there is room in chip FIFO
+				const unsigned int max_depth = (Edvtype::dv3003 == devtype) ? 5 : 2;
+				std::unique_lock<std::mutex> lk(buffer_mutex);
+				buffer_cv.wait_for(lk, std::chrono::milliseconds(50),
+					[&]{ return !keep_running || buffer_depth < max_depth; });
 			}
 
 			if (keep_running)
@@ -700,7 +699,10 @@ void CDVDevice::ReadDevice()
 
 			// Timeout recovery
 			if (0 == RxBytes && buffer_depth > 0)
+			{
 				buffer_depth = 0;
+				buffer_cv.notify_one();
+			}
 		}
 
 		SDV_Packet p;

@@ -55,6 +55,7 @@ protected:
 	std::unique_ptr<CDVDevice> dstar_device, dmrsf_device;
 	bool mixed_mode = false;
 	char mixed_dstar_module = ' ';
+	CDV3003 *mixed_dv3003 = nullptr;  // cached pointer, owned by dmrsf_device
 
 	CPacketQueue codec2_queue;
 
