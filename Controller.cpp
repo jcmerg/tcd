@@ -47,6 +47,7 @@ bool CController::Start()
 {
 	usrp_rx_num = calcNumerator(g_Conf.GetGain(EGainType::usrprx));
 	usrp_tx_num = calcNumerator(g_Conf.GetGain(EGainType::usrptx));
+	dmr_reencode_num = calcNumerator(g_Conf.GetGain(EGainType::dmrreencode));
 	m_agc.Configure(g_Conf.GetAGCEnabled(), g_Conf.GetAGCTarget(), g_Conf.GetAGCAttack(), g_Conf.GetAGCRelease(), g_Conf.GetAGCMaxGain());
 
 	if (InitVocoders() || tcClient.Open(g_Conf.GetAddress(), g_Conf.GetTCMods(), g_Conf.GetPort()))
@@ -970,7 +971,16 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		// so DMR/YSF output has correct levels (not the original hot passthrough)
 		{
 			uint8_t ambe2[9];
-			md380_encode_fec(ambe2, const_cast<int16_t*>(packet->GetAudioSamples()));
+			const int16_t *pcm = packet->GetAudioSamples();
+			if (dmr_reencode_num != 256)
+			{
+				int16_t tmp[160];
+				for (int i = 0; i < 160; i++)
+					tmp[i] = (int16_t)((pcm[i] * dmr_reencode_num) >> 8);
+				md380_encode_fec(ambe2, tmp);
+			}
+			else
+				md380_encode_fec(ambe2, const_cast<int16_t*>(pcm));
 			packet->SetDMRData(ambe2);
 		}
 		codec2_queue.push(packet);

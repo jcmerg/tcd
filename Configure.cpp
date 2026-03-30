@@ -31,6 +31,7 @@
 #define DMRGAINOUT     "DmrYsfGainOut"
 #define DSTARGAININ    "DStarGainIn"
 #define DSTARGAINOUT   "DStarGainOut"
+#define DMRREENCODE    "DmrReencodeGain"
 #define MODULES        "Modules"
 #define SERVERADDRESS  "ServerAddress"
 #define PORT           "Port"
@@ -134,6 +135,8 @@ bool CConfigure::ReadData(const std::string &path)
 			usrp_tx = getSigned(key, value);
 		else if (0 == key.compare(USRPRXGAIN))
 			usrp_rx = getSigned(key, value);
+		else if (0 == key.compare(DMRREENCODE))
+			dmr_reencode = getSigned(key, value);
 		else if (0 == key.compare(DEVICESERIAL))
 			device_serials.push_back(value);
 		else if (0 == key.compare(AGCENABLE))
@@ -189,6 +192,8 @@ bool CConfigure::ReadData(const std::string &path)
 	std::cout << DMRGAINOUT << " = " << dmr_out << std::endl;
 	std::cout << USRPTXGAIN << " = " << usrp_tx << std::endl;
 	std::cout << USRPRXGAIN << " = " << usrp_rx << std::endl;
+	if (dmr_reencode != 0)
+		std::cout << DMRREENCODE << " = " << dmr_reencode << std::endl;
 	if (agc_enabled)
 		std::cout << "AGC = enabled, Target=" << agc_target << "dBFS, Attack=" << agc_attack << "ms, Release=" << agc_release << "ms, MaxGain=" << agc_maxgain << "dB" << std::endl;
 	else
@@ -227,7 +232,8 @@ int CConfigure::GetGain(EGainType gt) const
 		case EGainType::dstarin:  return dstar_in;
 		case EGainType::dstarout: return dstar_out;
 		case EGainType::usrptx:   return usrp_tx;
-		case EGainType::usrprx:   return usrp_rx;
-		default:                  return 0;
+		case EGainType::usrprx:      return usrp_rx;
+		case EGainType::dmrreencode: return dmr_reencode;
+		default:                     return 0;
 	}
 }
