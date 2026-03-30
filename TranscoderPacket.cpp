@@ -38,6 +38,7 @@ CTranscoderPacket::CTranscoderPacket(const STCPacket &tcp) : dstar_set(false), d
 		SetP25Data(tcp.p25);
 		break;
 	case ECodecType::usrp:
+	case ECodecType::svx:
 		SetUSRPData(tcp.usrp);
 		break;
 	case ECodecType::c2_1600:

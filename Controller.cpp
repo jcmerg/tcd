@@ -425,6 +425,7 @@ void CController::ReadReflectorThread()
 				imbe_queue.push(packet);
 				break;
 			case ECodecType::usrp:
+			case ECodecType::svx:
 				usrp_queue.push(packet);
 				break;
 			case ECodecType::c2_1600:
@@ -552,6 +553,7 @@ void CController::ProcessC2Thread()
 			case ECodecType::dmr:
 			case ECodecType::p25:
 			case ECodecType::usrp:
+			case ECodecType::svx:
 				// codec_in was AMBE, so we need to calculate the the M17 data
 				AudiotoCodec2(packet);
 				break;
@@ -614,6 +616,7 @@ void CController::ProcessSWAMBE2Thread()
 			case ECodecType::dstar:
 			case ECodecType::p25:
 			case ECodecType::usrp:
+			case ECodecType::svx:
 				AudiotoSWAMBE2(packet);
 				break;
 
@@ -674,6 +677,7 @@ void CController::ProcessIMBEThread()
 			case ECodecType::dstar:
 			case ECodecType::dmr:
 			case ECodecType::usrp:
+			case ECodecType::svx:
 				AudiotoIMBE(packet);
 				break;
 
@@ -734,6 +738,27 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	imbe_queue.push(packet);
 }
 
+void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
+{
+	const int16_t *p = packet->GetUSRPData();
+	int16_t tmp[160];
+	memcpy(tmp, p, sizeof(tmp));
+
+	m_agc.Process(tmp, 160, packet->GetStreamId());
+	packet->SetAudioSamples(tmp, false);
+
+	dstar_device->AddPacket(packet);
+	codec2_queue.push(packet);
+
+#ifdef USE_SW_AMBE2
+	swambe2_queue.push(packet);
+#else
+	dmrsf_device->AddPacket(packet);
+#endif
+
+	imbe_queue.push(packet);
+}
+
 void CController::ProcessUSRPThread()
 {
 	while (keep_running)
@@ -752,6 +777,10 @@ void CController::ProcessUSRPThread()
 
 			case ECodecType::usrp:
 				USRPtoAudio(packet);
+				break;
+
+			case ECodecType::svx:
+				SvxToAudio(packet);
 				break;
 		}
 	}
@@ -857,6 +886,8 @@ void CController::Dump(const std::shared_ptr<CTranscoderPacket> p, const std::st
 		line << " USRP";
 	if (ECodecType::usrp == in)
 		line << "*";
+	if (ECodecType::svx == in)
+		line << "(svx)";
 	if (p->IsSecond())
 		line << " IsSecond";
 	if (p->IsLast())

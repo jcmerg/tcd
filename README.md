@@ -107,8 +107,10 @@ Gain values (in dB, range -24 to +24) are applied at decode and encode stages:
 | `DStarGainOut` | Encode | PCM → D-Star AMBE | Reduce PCM back to D-Star level |
 | `DmrYsfGainIn` | Decode | DMR/YSF AMBE2+ → PCM | Attenuate hot DMR/YSF audio |
 | `DmrYsfGainOut` | Encode | PCM → DMR/YSF AMBE2+ | Attenuate PCM for DMR/YSF encoding |
-| `UsrpRxGain` | Receive | PCM from USRP/SvxLink → internal PCM | Attenuate incoming PCM sources |
-| `UsrpTxGain` | Transmit | Internal PCM → USRP/SvxLink | Adjust PCM level sent to USRP |
+| `UsrpRxGain` | Receive | PCM from USRP → internal PCM | Attenuate incoming USRP audio |
+| `UsrpTxGain` | Transmit | Internal PCM → USRP | Adjust PCM level sent to USRP |
+
+**Note**: SvxReflector audio uses a separate codec path (`ECodecType::svx`) and is **not** affected by UsrpRxGain/UsrpTxGain. SVX gain is configured in urfd.ini (see urfd documentation).
 
 The net gain for a transcoding path is the sum of the source GainIn and the target GainOut. With AGC enabled, the static gains only need to do coarse codec-level matching — the AGC handles user-to-user variation.
 
