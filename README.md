@@ -198,7 +198,9 @@ sudo journalctl -u tcd -f          # follow logs
 - **md380 always linked**: Runtime device detection instead of compile-time flags. DMR re-encode after AGC via `DmrReencodeGain` for correct output levels.
 - **Performance**: FTDI event notification (`FT_SetEventNotification`) instead of busy-poll, condition variables for FeedDevice, cached DV3003 pointer. ~5% CPU on Raspberry Pi 3.
 - **AGC improvements**: Noise gate (-50 dBFS), peak limiter, symmetric gain limits
-- **Thread safety**: Mutex around IMBE vocoder calls (race between C2 and IMBE threads)
+- **SVX codec path**: Separate `ECodecType::svx` for independent SVX audio handling, routed through all codec stages without touching USRP gain
+- **md380 stream isolation**: Save/restore encoder state per stream and mutex around all md380 calls to prevent cross-stream crosstalk in multi-module setups
+- **Thread safety**: Mutex around IMBE vocoder calls (race between C2 and IMBE threads), SIGPIPE ignored for clean reconnection after reflector restart
 - **Error handling**: Retry limit with backoff in SendToReflector (was infinite loop), graceful queue overflow handling (was raise(SIGINT)), timeout recovery in ReadDevice
 - **FTDI robustness**: Auto-unbind ftdi_sio at startup, device whitelist by serial number, FTDI buffer flush on overflow
 - **Usability**: `--list-devices` CLI option, `DeviceSerial` config, improved error messages, unified `build.sh` with auto-dependency install
