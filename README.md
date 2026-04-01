@@ -118,11 +118,23 @@ UsrpRxGain      = 0
 DmrReencodeGain = -10           # reduce loud DMR/YSF output (0 = disable re-encode)
 
 # AGC (Automatic Gain Control)
-AGC        = true
-AGCTarget  = -16
-AGCAttack  = 50
-AGCRelease = 500
-AGCMaxGain = 12
+AGC             = true
+AGCTarget       = -16
+AGCAttack       = 50
+AGCRelease      = 500
+AGCMaxGainUp    = 20        # max amplification in dB
+AGCMaxGainDown  = 24        # max attenuation in dB
+AGCNoiseGate    = -55       # noise gate threshold in dBFS
+
+# Web Dashboard & Monitoring
+Monitor          = true
+MonitorHttpPort  = 8080     # web dashboard
+MonitorStatsPort = 8081     # plain TCP stats socket (for tcdmon)
+
+# Stats CSV Logging (per-stream AGC analysis)
+StatsLog       = true
+StatsLogDir    = /tmp/tcd-stats
+StatsLogRetain = 24         # hours before auto-cleanup
 ```
 
 ### Audio gain
@@ -168,11 +180,56 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 | `AGCTarget` | `-16` | Target RMS level in dBFS. Lower = quieter output. |
 | `AGCAttack` | `50` | Attack time in ms. How fast loud signals are dampened. |
 | `AGCRelease` | `500` | Release time in ms. How fast quiet signals are raised. |
-| `AGCMaxGain` | `12` | Maximum gain boost in dB. Limits noise amplification in quiet passages. |
+| `AGCMaxGainUp` | `20` | Maximum amplification in dB. Limits noise boost on quiet input. |
+| `AGCMaxGainDown` | `24` | Maximum attenuation in dB. Limits reduction on loud input. |
+| `AGCNoiseGate` | `-55` | Noise gate threshold in dBFS. Below this level, gain is frozen. |
+
+Note: `AGCMaxGain` (symmetric, old style) is still accepted for backwards compatibility — it sets both Up and Down to the same value.
+
+Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.
 
 **Without AGC**, the static gain values must compensate for all level differences between codecs and users. Tuning is tedious and every route needs individual attention.
 
 **With AGC**, static gains only do coarse matching (D-Star is inherently quieter, so a small boost remains). The AGC automatically adjusts for different microphone levels, radio models, and codec characteristics.
+
+All AGC and gain parameters can be changed at runtime via the web dashboard (no restart required).
+
+## Monitoring
+
+### Web Dashboard
+
+Access `http://<tcd-host>:8080` in a browser. Features:
+
+- **Signal flow diagram**: Shows the active codec path with live dBFS levels at each stage
+- **VU meters**: Pre-AGC and post-AGC with peak hold
+- **AGC controls**: Enable/disable, target, attack, release, gain limits — changes apply live
+- **Gain sliders**: All codec directions, instant effect without restart
+- **Device status**: DVSI serial, type, buffer depth, online/offline
+- **Reflector status**: Connected/disconnected, packet counters
+- **Save to INI**: Persist current settings to tcd.ini
+
+### ncurses Terminal Monitor (tcdmon)
+
+For SSH access to the transcoder host:
+
+```bash
+tcdmon                      # connect to localhost:8081
+tcdmon 172.16.20.20 8081    # connect to remote host
+```
+
+Shows VU bars, signal flow, AGC state, device status. Press `q` to quit.
+
+### Stats CSV Logging
+
+When `StatsLog = true`, tcd writes a CSV file per stream to `StatsLogDir`:
+
+```
+F_20260402_003512_43521.csv
+```
+
+Format: `ms,module,codec,rms_in,peak_in,rms_out,peak_out,agc_gain,gate`
+
+Files older than `StatsLogRetain` hours are automatically deleted. Useful for post-hoc AGC analysis with gnuplot, Excel, or Python.
 
 ## DV3003 Notes
 
@@ -197,7 +254,10 @@ sudo journalctl -u tcd -f          # follow logs
 - **DV3003 D-Star support**: PKT_COMPAND fix, 350-byte flush, per-channel encoding
 - **md380 always linked**: Runtime device detection instead of compile-time flags. DMR re-encode after AGC via `DmrReencodeGain` for correct output levels.
 - **Performance**: FTDI event notification (`FT_SetEventNotification`) instead of busy-poll, condition variables for FeedDevice, cached DV3003 pointer. ~5% CPU on Raspberry Pi 3.
-- **AGC improvements**: Noise gate (-50 dBFS), peak limiter, symmetric gain limits
+- **AGC improvements**: Asymmetric gain limits (up/down), configurable noise gate with hysteresis, peak limiter, per-stream tracking, live reconfiguration from web dashboard
+- **Web dashboard**: Embedded mongoose HTTP+WebSocket server with signal flow visualization, VU meters, gain sliders, AGC controls, device status, save-to-INI
+- **ncurses monitor**: `tcdmon` standalone SSH-friendly terminal tool
+- **Stats CSV logging**: Per-stream AGC/level recording for post-hoc analysis with auto-cleanup
 - **SVX codec path**: Separate `ECodecType::svx` for independent SVX audio handling, routed through all codec stages without touching USRP gain
 - **md380 stream isolation**: Save/restore encoder state per stream and mutex around all md380 calls to prevent cross-stream crosstalk in multi-module setups
 - **Thread safety**: Mutex around IMBE vocoder calls (race between C2 and IMBE threads), SIGPIPE ignored for clean reconnection after reflector restart
