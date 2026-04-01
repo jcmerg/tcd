@@ -270,11 +270,20 @@ def print_summary(results):
     ceiling_streams = [r for r in with_speech if r["gain_ceiling_pct"] > 30]
     if ceiling_streams:
         max_needed = max(abs(r["target_dev"]) + r["gain_max"] for r in ceiling_streams)
-        issues.append((
-            f"{len(ceiling_streams)}/{n} streams hit gain ceiling (>30% of speech). "
-            f"Quietest input needs {max_needed:.0f}dB total gain.",
-            f"-> Set AGCMaxGainUp = {max_needed + 3:.0f}"
-        ))
+        recommended = min(max_needed + 3, 30)  # cap at 30dB — beyond that noise dominates
+        if max_needed > 30:
+            issues.append((
+                f"{len(ceiling_streams)}/{n} streams hit gain ceiling (>30% of speech). "
+                f"Quietest input needs {max_needed:.0f}dB total gain, but >30dB amplifies noise. "
+                f"These are likely sender-side mic gain problems.",
+                f"-> Set AGCMaxGainUp = {recommended:.0f} (practical limit, won't fix extremely quiet input)"
+            ))
+        else:
+            issues.append((
+                f"{len(ceiling_streams)}/{n} streams hit gain ceiling (>30% of speech). "
+                f"Quietest input needs {max_needed:.0f}dB total gain.",
+                f"-> Set AGCMaxGainUp = {recommended:.0f}"
+            ))
 
     # Check if output is systematically off-target without ceiling
     no_ceil = [r for r in with_speech if r["gain_ceiling_pct"] < 10]
