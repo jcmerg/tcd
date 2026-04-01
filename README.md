@@ -254,7 +254,7 @@ sudo journalctl -u tcd -f          # follow logs
 - **DV3003 D-Star support**: PKT_COMPAND fix, 350-byte flush, per-channel encoding
 - **md380 always linked**: Runtime device detection instead of compile-time flags. DMR re-encode after AGC via `DmrReencodeGain` for correct output levels.
 - **Performance**: FTDI event notification (`FT_SetEventNotification`) instead of busy-poll, condition variables for FeedDevice, cached DV3003 pointer. ~5% CPU on Raspberry Pi 3.
-- **AGC improvements**: Asymmetric gain limits (up/down), configurable noise gate with hysteresis, peak limiter, per-stream tracking, live reconfiguration from web dashboard
+- **AGC improvements**: Sliding RMS window (60ms), gate-with-decay (gain drifts to unity during silence), fast post-gate release (3x speed for first syllable after pause), asymmetric gain limits (up/down), configurable noise gate with hysteresis, peak limiter, per-stream tracking, live reconfiguration from web dashboard
 - **Web dashboard**: Embedded mongoose HTTP+WebSocket server with signal flow visualization, VU meters, gain sliders, AGC controls, device status, save-to-INI
 - **ncurses monitor**: `tcdmon` standalone SSH-friendly terminal tool
 - **Stats CSV logging**: Per-stream AGC/level recording for post-hoc analysis with auto-cleanup
