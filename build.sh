@@ -185,6 +185,8 @@ echo "Installing..."
 if systemctl is-active --quiet tcd 2>/dev/null; then
     systemctl stop tcd
     cp tcd tcdmon "$INSTALL_DIR/"
+    cp tools/agc-analyze.py "$INSTALL_DIR/agc-analyze"
+    chmod +x "$INSTALL_DIR/agc-analyze"
     if [ ! -f /usr/local/etc/tcd.ini ]; then
         cp config/tcd.ini /usr/local/etc/tcd.ini
         echo "Default tcd.ini installed — edit /usr/local/etc/tcd.ini before starting!"
@@ -198,6 +200,8 @@ if systemctl is-active --quiet tcd 2>/dev/null; then
     echo "=== tcd restarted ==="
 else
     cp tcd tcdmon "$INSTALL_DIR/"
+    cp tools/agc-analyze.py "$INSTALL_DIR/agc-analyze"
+    chmod +x "$INSTALL_DIR/agc-analyze"
     if [ ! -f /usr/local/etc/tcd.ini ]; then
         mkdir -p /usr/local/etc
         cp config/tcd.ini /usr/local/etc/tcd.ini
