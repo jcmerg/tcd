@@ -297,12 +297,12 @@ static void draw_flow(int y, int x, int width, const ModuleData &m, const std::s
 	// Target codecs
 	attron(COLOR_PAIR(3) | A_BOLD);
 	std::string targets;
-	if (m.codec_in != "dstar") targets += "DStar ";
-	if (m.codec_in != "dmr/ysf") targets += "DMR/YSF ";
-	if (m.codec_in != "c2_1600" && m.codec_in != "c2_3200") targets += "M17 ";
-	if (m.codec_in != "p25") targets += "P25 ";
-	if (m.codec_in != "usrp") targets += "USRP ";
-	if (m.codec_in != "svx") targets += "SVX";
+	if (m.codec_in.find("Star") == std::string::npos) targets += "D-Star ";
+	if (m.codec_in.find("DMR") == std::string::npos) targets += "DMR/YSF ";
+	if (m.codec_in.find("Codec2") == std::string::npos) targets += "M17 ";
+	if (m.codec_in.find("P25") == std::string::npos) targets += "P25 ";
+	if (m.codec_in != "USRP") targets += "USRP ";
+	if (m.codec_in != "SVX") targets += "SVX";
 	mvprintw(y, col, "%s", targets.c_str());
 	attroff(COLOR_PAIR(3) | A_BOLD);
 }
