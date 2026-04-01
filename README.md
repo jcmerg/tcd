@@ -188,6 +188,13 @@ Note: `AGCMaxGain` (symmetric, old style) is still accepted for backwards compat
 
 Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.
 
+**AGC algorithm details:**
+- **Sliding RMS window** (3 frames / 60ms): smooths consonant/vowel variation, tracks syllable-level energy
+- **Per-stream long-term average gain**: tracks the typical gain needed for each speaker via slow EMA (~2s)
+- **Gate with gain decay**: during silence, gain drifts toward the speaker's average gain (not unity), so the first syllable after a pause starts at the right level
+- **Fast post-gate release**: first 3 frames after gate opening use 3x release speed for quicker recovery
+- **Peak limiter**: hard limit at -0.1 dBFS, never clips
+
 **Without AGC**, the static gain values must compensate for all level differences between codecs and users. Tuning is tedious and every route needs individual attention.
 
 **With AGC**, static gains only do coarse matching (D-Star is inherently quieter, so a small boost remains). The AGC automatically adjusts for different microphone levels, radio models, and codec characteristics.
