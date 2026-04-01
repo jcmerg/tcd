@@ -39,10 +39,16 @@ echo "Architecture: $ARCH (compiler: $CC_ARCH)"
 for cmd in g++ make git; do
     if ! command -v $cmd &>/dev/null; then
         echo "Installing build tools..."
-        apt-get update && apt-get install -y build-essential git
+        apt-get update && apt-get install -y build-essential git libncurses-dev
         break
     fi
 done
+
+# Ensure ncurses is available (for tcdmon)
+if ! dpkg -l libncurses-dev 2>/dev/null | grep -q '^ii'; then
+    echo "Installing libncurses-dev..."
+    apt-get update && apt-get install -y libncurses-dev
+fi
 
 mkdir -p "$BUILDDIR"
 cd "$BUILDDIR"
@@ -178,7 +184,7 @@ make -j$(nproc)
 echo "Installing..."
 if systemctl is-active --quiet tcd 2>/dev/null; then
     systemctl stop tcd
-    cp tcd "$INSTALL_DIR/tcd"
+    cp tcd tcdmon "$INSTALL_DIR/"
     if [ ! -f /usr/local/etc/tcd.ini ]; then
         cp config/tcd.ini /usr/local/etc/tcd.ini
         echo "Default tcd.ini installed — edit /usr/local/etc/tcd.ini before starting!"
@@ -191,7 +197,7 @@ if systemctl is-active --quiet tcd 2>/dev/null; then
     systemctl start tcd
     echo "=== tcd restarted ==="
 else
-    cp tcd "$INSTALL_DIR/tcd"
+    cp tcd tcdmon "$INSTALL_DIR/"
     if [ ! -f /usr/local/etc/tcd.ini ]; then
         mkdir -p /usr/local/etc
         cp config/tcd.ini /usr/local/etc/tcd.ini

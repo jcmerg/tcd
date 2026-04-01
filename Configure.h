@@ -38,14 +38,22 @@ public:
 	const std::vector<std::string> &GetDeviceSerials(void) const { return device_serials; }
 
 	// AGC
-	bool  GetAGCEnabled(void) const  { return agc_enabled; }
-	float GetAGCTarget(void) const   { return agc_target; }
-	float GetAGCAttack(void) const   { return agc_attack; }
-	float GetAGCRelease(void) const  { return agc_release; }
-	float GetAGCMaxGain(void) const  { return agc_maxgain; }
+	bool  GetAGCEnabled(void) const    { return agc_enabled; }
+	float GetAGCTarget(void) const     { return agc_target; }
+	float GetAGCAttack(void) const     { return agc_attack; }
+	float GetAGCRelease(void) const    { return agc_release; }
+	float GetAGCMaxGainUp(void) const  { return agc_maxgain_up; }
+	float GetAGCMaxGainDown(void) const { return agc_maxgain_down; }
+	float GetAGCNoiseGate(void) const   { return agc_noisegate; }
+
+	// Monitor
+	uint16_t GetMonitorHttpPort(void) const  { return monitor_http_port; }
+	uint16_t GetMonitorStatsPort(void) const { return monitor_stats_port; }
+	bool     GetMonitorEnabled(void) const   { return monitor_enabled; }
+	const std::string &GetIniPath(void) const { return ini_path; }
 
 private:
-	std::string tcmods, address;
+	std::string tcmods, address, ini_path;
 	std::vector<std::string> device_serials;
 	uint16_t port;
 	int dstar_in, dstar_out, dmr_in, dmr_out, usrp_tx, usrp_rx, dmr_reencode;
@@ -53,7 +61,12 @@ private:
 	float agc_target  = -16.0f;
 	float agc_attack  = 50.0f;
 	float agc_release = 500.0f;
-	float agc_maxgain = 12.0f;
+	float agc_maxgain_up   = 20.0f;   // max amplification (dB)
+	float agc_maxgain_down = 24.0f;   // max attenuation (dB)
+	float agc_noisegate    = -55.0f;  // noise gate threshold (dBFS)
+	bool     monitor_enabled    = true;
+	uint16_t monitor_http_port  = 8080;
+	uint16_t monitor_stats_port = 8081;
 
 	int getSigned(const std::string &key, const std::string &value) const;
 	void badParam(const std::string &key) const;

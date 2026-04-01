@@ -41,6 +41,12 @@
 #define AGCATTACK      "AGCAttack"
 #define AGCRELEASE     "AGCRelease"
 #define AGCMAXGAIN     "AGCMaxGain"
+#define AGCMAXGAINUP   "AGCMaxGainUp"
+#define AGCMAXGAINDOWN "AGCMaxGainDown"
+#define AGCNOISEGATE   "AGCNoiseGate"
+#define MONITORENABLE  "Monitor"
+#define MONITORHTTP    "MonitorHttpPort"
+#define MONITORSTATS   "MonitorStatsPort"
 
 static inline void split(const std::string &s, char delim, std::vector<std::string> &v)
 {
@@ -73,6 +79,7 @@ static inline void trim(std::string &s) {
 bool CConfigure::ReadData(const std::string &path)
 // returns true on failure
 {
+	ini_path = path;
 	std::regex IPv4RegEx = std::regex("^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3,3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9]){1,1}$", std::regex::extended);
 	std::regex IPv6RegEx = std::regex("^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}(:[0-9a-fA-F]{1,4}){1,1}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|([0-9a-fA-F]{1,4}:){1,1}(:[0-9a-fA-F]{1,4}){1,6}|:((:[0-9a-fA-F]{1,4}){1,7}|:))$", std::regex::extended);
 
@@ -148,7 +155,23 @@ bool CConfigure::ReadData(const std::string &path)
 		else if (0 == key.compare(AGCRELEASE))
 			agc_release = std::stof(value);
 		else if (0 == key.compare(AGCMAXGAIN))
-			agc_maxgain = std::stof(value);
+		{
+			// Legacy: single value sets both up and down
+			agc_maxgain_up = std::stof(value);
+			agc_maxgain_down = std::stof(value);
+		}
+		else if (0 == key.compare(AGCMAXGAINUP))
+			agc_maxgain_up = std::stof(value);
+		else if (0 == key.compare(AGCMAXGAINDOWN))
+			agc_maxgain_down = std::stof(value);
+		else if (0 == key.compare(AGCNOISEGATE))
+			agc_noisegate = std::stof(value);
+		else if (0 == key.compare(MONITORENABLE))
+			monitor_enabled = IS_TRUE(value[0]);
+		else if (0 == key.compare(MONITORHTTP))
+			monitor_http_port = (uint16_t)std::stoul(value);
+		else if (0 == key.compare(MONITORSTATS))
+			monitor_stats_port = (uint16_t)std::stoul(value);
 		else
 			badParam(key);
 	}
@@ -195,9 +218,11 @@ bool CConfigure::ReadData(const std::string &path)
 	if (dmr_reencode != 0)
 		std::cout << DMRREENCODE << " = " << dmr_reencode << std::endl;
 	if (agc_enabled)
-		std::cout << "AGC = enabled, Target=" << agc_target << "dBFS, Attack=" << agc_attack << "ms, Release=" << agc_release << "ms, MaxGain=" << agc_maxgain << "dB" << std::endl;
+		std::cout << "AGC = enabled, Target=" << agc_target << "dBFS, Attack=" << agc_attack << "ms, Release=" << agc_release << "ms, Up=+" << agc_maxgain_up << "dB, Down=-" << agc_maxgain_down << "dB" << std::endl;
 	else
 		std::cout << "AGC = disabled" << std::endl;
+	if (monitor_enabled)
+		std::cout << "Monitor = HTTP:" << monitor_http_port << " Stats:" << monitor_stats_port << std::endl;
 
 	return false;
 }

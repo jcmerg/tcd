@@ -1,0 +1,159 @@
+#pragma once
+
+// TcdStats — real-time metrics for monitoring (web dashboard + tcdmon)
+// Updated by audio pipeline threads, read by MonitorServer.
+// Uses atomics for lock-free access from monitor thread.
+
+#include <atomic>
+#include <cstdint>
+#include <cmath>
+#include <cstring>
+#include <string>
+#include <unordered_map>
+#include <mutex>
+
+#include "TCPacketDef.h"
+
+struct ModuleStats
+{
+	// Audio levels in dBFS (updated per 20ms frame)
+	std::atomic<float> rms_in{-100.0f};     // before AGC
+	std::atomic<float> peak_in{-100.0f};
+	std::atomic<float> rms_out{-100.0f};     // after AGC
+	std::atomic<float> peak_out{-100.0f};
+
+	// AGC state
+	std::atomic<float> agc_gain_db{0.0f};    // current gain in dB
+	std::atomic<bool>  agc_gate{false};       // noise gate active
+
+	// Stream info
+	std::atomic<uint16_t> stream_id{0};
+	std::atomic<uint8_t>  codec_in{0};        // ECodecType cast
+
+	// Packet counters
+	std::atomic<uint32_t> packets_in{0};      // from reflector
+	std::atomic<uint32_t> packets_out{0};     // to reflector
+
+	// Timing
+	std::atomic<float> last_activity{0.0f};   // seconds since last packet (0 = active)
+};
+
+struct DeviceStats
+{
+	std::string serial;
+	std::string type;       // "DV3000" or "DV3003"
+	std::atomic<unsigned int> buf_depth{0};
+	std::atomic<uint32_t> errors{0};
+	std::atomic<bool> online{false};
+};
+
+struct ReflectorStats
+{
+	std::atomic<bool> connected{false};
+	std::atomic<uint32_t> packets_rx{0};
+	std::atomic<uint32_t> packets_tx{0};
+};
+
+class CTcdStats
+{
+public:
+	static constexpr int MAX_MODULES = 26;
+	static constexpr int MAX_DEVICES = 4;
+
+	ModuleStats    modules[MAX_MODULES];    // indexed by module - 'A'
+	DeviceStats    devices[MAX_DEVICES];
+	int            num_devices{0};
+	ReflectorStats reflector;
+
+	// Configuration (readable by monitor, writable by REST)
+	struct Config
+	{
+		std::atomic<bool>  agc_enabled{false};
+		std::atomic<float> agc_target{-16.0f};
+		std::atomic<float> agc_attack{50.0f};
+		std::atomic<float> agc_release{500.0f};
+		std::atomic<float> agc_maxgain_up{20.0f};
+		std::atomic<float> agc_maxgain_down{24.0f};
+		std::atomic<float> agc_noisegate{-55.0f};
+		std::atomic<int>   gain_dstar_in{0};
+		std::atomic<int>   gain_dstar_out{0};
+		std::atomic<int>   gain_dmr_in{0};
+		std::atomic<int>   gain_dmr_out{0};
+		std::atomic<int>   gain_usrp_rx{0};
+		std::atomic<int>   gain_usrp_tx{0};
+		std::atomic<int>   gain_dmr_reencode{0};
+	} config;
+
+	// Module name list (set at startup)
+	std::string module_letters;
+
+	// Helper: compute dBFS from PCM samples
+	static void MeasureLevels(const int16_t *samples, int count, float &rms_dbfs, float &peak_dbfs)
+	{
+		float sumSq = 0.0f;
+		float peak = 0.0f;
+		for (int i = 0; i < count; i++)
+		{
+			float s = (float)samples[i];
+			sumSq += s * s;
+			float a = fabsf(s);
+			if (a > peak) peak = a;
+		}
+		float rms = sqrtf(sumSq / count);
+		rms_dbfs  = (rms  > 0.0f) ? 20.0f * log10f(rms  / 32767.0f) : -100.0f;
+		peak_dbfs = (peak > 0.0f) ? 20.0f * log10f(peak / 32767.0f) : -100.0f;
+	}
+
+	// Update pre-AGC levels for a module
+	void UpdateLevelsIn(char module, const int16_t *samples, int count)
+	{
+		int idx = module - 'A';
+		if (idx < 0 || idx >= MAX_MODULES) return;
+		float rms, peak;
+		MeasureLevels(samples, count, rms, peak);
+		modules[idx].rms_in.store(rms, std::memory_order_relaxed);
+		modules[idx].peak_in.store(peak, std::memory_order_relaxed);
+	}
+
+	// Update post-AGC levels for a module
+	void UpdateLevelsOut(char module, const int16_t *samples, int count)
+	{
+		int idx = module - 'A';
+		if (idx < 0 || idx >= MAX_MODULES) return;
+		float rms, peak;
+		MeasureLevels(samples, count, rms, peak);
+		modules[idx].rms_out.store(rms, std::memory_order_relaxed);
+		modules[idx].peak_out.store(peak, std::memory_order_relaxed);
+	}
+
+	// Update AGC state for a module
+	void UpdateAGC(char module, float gain_db, bool gate)
+	{
+		int idx = module - 'A';
+		if (idx < 0 || idx >= MAX_MODULES) return;
+		modules[idx].agc_gain_db.store(gain_db, std::memory_order_relaxed);
+		modules[idx].agc_gate.store(gate, std::memory_order_relaxed);
+	}
+
+	// Record incoming packet
+	void PacketIn(char module, uint16_t sid, ECodecType codec)
+	{
+		int idx = module - 'A';
+		if (idx < 0 || idx >= MAX_MODULES) return;
+		modules[idx].packets_in.fetch_add(1, std::memory_order_relaxed);
+		modules[idx].stream_id.store(sid, std::memory_order_relaxed);
+		modules[idx].codec_in.store((uint8_t)codec, std::memory_order_relaxed);
+		modules[idx].last_activity.store(0.0f, std::memory_order_relaxed);
+	}
+
+	// Record outgoing packet
+	void PacketOut(char module)
+	{
+		int idx = module - 'A';
+		if (idx < 0 || idx >= MAX_MODULES) return;
+		modules[idx].packets_out.fetch_add(1, std::memory_order_relaxed);
+	}
+};
+
+// Global instance
+extern CTcdStats g_Stats;

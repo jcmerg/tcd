@@ -31,6 +31,9 @@
 #include "TranscoderPacket.h"
 #include "Controller.h"
 #include "Configure.h"
+#include "TcdStats.h"
+
+extern CTcdStats g_Stats;
 
 extern CConfigure g_Conf;
 
@@ -48,7 +51,7 @@ bool CController::Start()
 	usrp_rx_num = calcNumerator(g_Conf.GetGain(EGainType::usrprx));
 	usrp_tx_num = calcNumerator(g_Conf.GetGain(EGainType::usrptx));
 	dmr_reencode_num = calcNumerator(g_Conf.GetGain(EGainType::dmrreencode));
-	m_agc.Configure(g_Conf.GetAGCEnabled(), g_Conf.GetAGCTarget(), g_Conf.GetAGCAttack(), g_Conf.GetAGCRelease(), g_Conf.GetAGCMaxGain());
+	m_agc.Configure(g_Conf.GetAGCEnabled(), g_Conf.GetAGCTarget(), g_Conf.GetAGCAttack(), g_Conf.GetAGCRelease(), g_Conf.GetAGCMaxGainUp(), g_Conf.GetAGCMaxGainDown(), g_Conf.GetAGCNoiseGate());
 
 	if (InitVocoders() || tcClient.Open(g_Conf.GetAddress(), g_Conf.GetTCMods(), g_Conf.GetPort()))
 	{
@@ -62,6 +65,25 @@ bool CController::Start()
 	if (!dmrsf_device)
 		swambe2Future = std::async(std::launch::async, &CController::ProcessSWAMBE2Thread, this);
 	return false;
+}
+
+void CController::ReconfigureAGC()
+{
+	m_agc.Configure(
+		g_Stats.config.agc_enabled.load(),
+		g_Stats.config.agc_target.load(),
+		g_Stats.config.agc_attack.load(),
+		g_Stats.config.agc_release.load(),
+		g_Stats.config.agc_maxgain_up.load(),
+		g_Stats.config.agc_maxgain_down.load(),
+		g_Stats.config.agc_noisegate.load()
+	);
+	// Also update gain numerators from live config
+	ambe_in_num = calcNumerator(g_Stats.config.gain_dmr_in.load());
+	ambe_out_num = calcNumerator(g_Stats.config.gain_dmr_out.load());
+	usrp_rx_num = calcNumerator(g_Stats.config.gain_usrp_rx.load());
+	usrp_tx_num = calcNumerator(g_Stats.config.gain_usrp_tx.load());
+	dmr_reencode_num = calcNumerator(g_Stats.config.gain_dmr_reencode.load());
 }
 
 void CController::Stop()
@@ -413,6 +435,25 @@ bool CController::InitVocoders()
 	if (dmrsf_device)
 		dmrsf_device->Start();
 
+	// Register DVSI devices in monitoring stats
+	{
+		int di = 0;
+		auto reg = [&](const std::string &serial, const std::string &desc) {
+			if (serial.empty() || di >= CTcdStats::MAX_DEVICES) return;
+			g_Stats.devices[di].serial = serial;
+			if (desc == "ThumbDV" || desc == "DVstick-30" || desc == "USB-3000"
+				|| desc == "FT230X Basic UART" || desc == "FT232R USB UART")
+				g_Stats.devices[di].type = "DV3000";
+			else
+				g_Stats.devices[di].type = "DV3003";
+			g_Stats.devices[di].online.store(true);
+			di++;
+		};
+		if (!dv3000_dev.first.empty()) reg(dv3000_dev.first, dv3000_dev.second);
+		if (!dv3003_dev.first.empty()) reg(dv3003_dev.first, dv3003_dev.second);
+		g_Stats.num_devices = di;
+	}
+
 	deviceset.clear();
 
 	return false;
@@ -422,10 +463,49 @@ bool CController::InitVocoders()
 // based on packet's codec_in.
 void CController::ReadReflectorThread()
 {
+	uint32_t reconf_counter = 0;
 	while (keep_running)
 	{
 		// preemptively check the connection(s)...
 		tcClient.ReConnect();
+
+		// Every ~1s: re-read config + age idle modules
+		if (++reconf_counter >= 10)
+		{
+			reconf_counter = 0;
+			ReconfigureAGC();
+
+			// Age idle timers and reset stale modules
+			for (char mod : g_Conf.GetTCMods())
+			{
+				int idx = mod - 'A';
+				if (idx < 0 || idx >= CTcdStats::MAX_MODULES) continue;
+				auto &ms = g_Stats.modules[idx];
+				float idle = ms.last_activity.load(std::memory_order_relaxed);
+				if (idle < 100.0f)  // don't overflow
+					ms.last_activity.store(idle + 1.0f, std::memory_order_relaxed);
+				// Reset display after 2s of no packets
+				if (idle >= 2.0f && ms.codec_in.load(std::memory_order_relaxed) != 0)
+				{
+					ms.codec_in.store(0, std::memory_order_relaxed);
+					ms.stream_id.store(0, std::memory_order_relaxed);
+					ms.rms_in.store(-100.0f, std::memory_order_relaxed);
+					ms.peak_in.store(-100.0f, std::memory_order_relaxed);
+					ms.rms_out.store(-100.0f, std::memory_order_relaxed);
+					ms.peak_out.store(-100.0f, std::memory_order_relaxed);
+					ms.agc_gain_db.store(0.0f, std::memory_order_relaxed);
+					ms.agc_gate.store(false, std::memory_order_relaxed);
+				}
+			}
+		}
+
+		// Check if at least one module has an open FD
+		{
+			bool conn = false;
+			for (char m : g_Conf.GetTCMods())
+				if (tcClient.GetFD(m) >= 0) { conn = true; break; }
+			g_Stats.reflector.connected.store(conn, std::memory_order_relaxed);
+		}
 
 		std::queue<std::unique_ptr<STCPacket>> queue;
 		// wait up to 100 ms to read something on the unix port
@@ -436,6 +516,24 @@ void CController::ReadReflectorThread()
 			// there is only one CTranscoderPacket created for each new STCPacket received from the reflector
 			auto packet = std::make_shared<CTranscoderPacket>(*queue.front());
 			queue.pop();
+			g_Stats.PacketIn(packet->GetModule(), packet->GetStreamId(), packet->GetCodecIn());
+			g_Stats.reflector.packets_rx.fetch_add(1, std::memory_order_relaxed);
+			// Reset module display when stream ends
+			if (packet->IsLast())
+			{
+				int idx = packet->GetModule() - 'A';
+				if (idx >= 0 && idx < CTcdStats::MAX_MODULES)
+				{
+					g_Stats.modules[idx].codec_in.store(0, std::memory_order_relaxed);  // none
+					g_Stats.modules[idx].stream_id.store(0, std::memory_order_relaxed);
+					g_Stats.modules[idx].rms_in.store(-100.0f, std::memory_order_relaxed);
+					g_Stats.modules[idx].peak_in.store(-100.0f, std::memory_order_relaxed);
+					g_Stats.modules[idx].rms_out.store(-100.0f, std::memory_order_relaxed);
+					g_Stats.modules[idx].peak_out.store(-100.0f, std::memory_order_relaxed);
+					g_Stats.modules[idx].agc_gain_db.store(0.0f, std::memory_order_relaxed);
+					g_Stats.modules[idx].agc_gate.store(false, std::memory_order_relaxed);
+				}
+			}
 			switch (packet->GetCodecIn())
 			{
 			case ECodecType::dstar:
@@ -660,8 +758,14 @@ void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		for (int i=0; i<160; i++)
 			tmp[i] = (tmp[i] * ambe_out_num) >> 8;
 	}
-	m_agc.Process(tmp, 160, packet->GetStreamId());
+	g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
+	{
+		float agc_db; bool agc_gate;
+		m_agc.Process(tmp, 160, packet->GetStreamId(), agc_db, agc_gate);
+		g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
+	}
 	packet->SetAudioSamples(tmp, false);
+	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
 
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
@@ -913,6 +1017,8 @@ void CController::SendToReflector(std::shared_ptr<CTranscoderPacket> packet)
 		if (!tcClient.Send(packet->GetTCPacket()))
 		{
 			packet->Sent();
+			g_Stats.PacketOut(packet->GetModule());
+			g_Stats.reflector.packets_tx.fetch_add(1, std::memory_order_relaxed);
 			return;
 		}
 		std::cerr << "SendToReflector: send failed, attempt " << (attempt + 1) << "/" << max_retries << std::endl;
@@ -928,13 +1034,17 @@ void CController::RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet)
 	if (ECodecType::dstar == packet->GetCodecIn())
 	{
 		// codec_in is dstar, the audio has just completed — apply AGC before encoding
+		g_Stats.UpdateLevelsIn(packet->GetModule(), packet->GetAudioSamples(), 160);
 		if (m_agc.IsEnabled())
 		{
 			int16_t tmp[160];
+			float agc_db; bool agc_gate;
 			memcpy(tmp, packet->GetAudioSamples(), sizeof(tmp));
-			m_agc.Process(tmp, 160, packet->GetStreamId());
+			m_agc.Process(tmp, 160, packet->GetStreamId(), agc_db, agc_gate);
 			packet->SetAudioSamples(tmp, false);
+			g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
 		}
+		g_Stats.UpdateLevelsOut(packet->GetModule(), packet->GetAudioSamples(), 160);
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
 		usrp_queue.push(packet);
@@ -967,13 +1077,17 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 	if (ECodecType::dmr == packet->GetCodecIn())
 	{
 		// codec_in is dmr (hardware decode), apply AGC before encoding
+		g_Stats.UpdateLevelsIn(packet->GetModule(), packet->GetAudioSamples(), 160);
 		if (m_agc.IsEnabled())
 		{
 			int16_t tmp[160];
+			float agc_db; bool agc_gate;
 			memcpy(tmp, packet->GetAudioSamples(), sizeof(tmp));
-			m_agc.Process(tmp, 160, packet->GetStreamId());
+			m_agc.Process(tmp, 160, packet->GetStreamId(), agc_db, agc_gate);
 			packet->SetAudioSamples(tmp, false);
+			g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
 		}
+		g_Stats.UpdateLevelsOut(packet->GetModule(), packet->GetAudioSamples(), 160);
 		// Re-encode DMR from AGC'd PCM via md380 software vocoder
 		// Only when DmrReencodeGain is explicitly set (non-zero)
 		// AGC alone does not trigger re-encode to save CPU on low-power devices
