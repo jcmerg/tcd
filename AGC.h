@@ -27,6 +27,10 @@ struct AGCState
 	int rmsIdx = 0;
 	int rmsCount = 0;  // frames seen (ramps up to 3)
 
+	// Long-term average gain for this stream (exponential moving average)
+	// Used as decay target during gate — maintains speaker-appropriate gain
+	float avgGain = 1.0f;
+
 	// Gate tracking
 	int gateFrames = 0;    // consecutive frames in gate
 	bool wasGated = false; // previous frame was gated
@@ -85,12 +89,13 @@ public:
 			state.wasGated = true;
 			state.postGateFrames = 0;
 
-			// Gate with gain decay: slowly drift toward unity (0dB)
-			// Decay rate: ~3dB per 500ms of silence (subtle, prevents stale gain)
+			// Gate with gain decay: slowly drift toward the long-term average gain
+			// for this stream. This keeps the gain at the right level for this speaker
+			// instead of drifting to unity (which would be wrong for quiet speakers).
 			if (state.gateFrames > 5)  // start decay after ~100ms of gate
 			{
-				float decayAlpha = 0.01f;  // very slow drift
-				state.gain += decayAlpha * (1.0f - state.gain);
+				float decayAlpha = 0.02f;
+				state.gain += decayAlpha * (state.avgGain - state.gain);
 			}
 
 			gate_out = true;
@@ -125,6 +130,11 @@ public:
 		}
 
 		state.gain += alpha * (desiredGain - state.gain);
+
+		// Update long-term average gain (slow EMA, ~2s time constant)
+		// Only during speech — gives a stable "typical gain" for this speaker
+		float avgAlpha = 0.01f;  // ~2s at 20ms frames
+		state.avgGain += avgAlpha * (state.gain - state.avgGain);
 
 		// Track post-gate state
 		if (state.wasGated)
