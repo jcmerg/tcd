@@ -24,7 +24,8 @@ struct ModuleStats
 
 	// AGC state
 	std::atomic<float> agc_gain_db{0.0f};    // current gain in dB
-	std::atomic<bool>  agc_gate{false};       // noise gate active
+	std::atomic<bool>  agc_gate{false};       // noise gate active (with hysteresis)
+	std::atomic<int>   agc_gate_count{0};     // consecutive gate frames (for hysteresis)
 
 	// Stream info
 	std::atomic<uint16_t> stream_id{0};
@@ -126,13 +127,22 @@ public:
 		modules[idx].peak_out.store(peak, std::memory_order_relaxed);
 	}
 
-	// Update AGC state for a module
+	// Update AGC state for a module (gate with hysteresis: 5 consecutive frames = ~100ms)
 	void UpdateAGC(char module, float gain_db, bool gate)
 	{
 		int idx = module - 'A';
 		if (idx < 0 || idx >= MAX_MODULES) return;
 		modules[idx].agc_gain_db.store(gain_db, std::memory_order_relaxed);
-		modules[idx].agc_gate.store(gate, std::memory_order_relaxed);
+		if (gate)
+		{
+			int cnt = modules[idx].agc_gate_count.fetch_add(1, std::memory_order_relaxed) + 1;
+			modules[idx].agc_gate.store(cnt >= 5, std::memory_order_relaxed);  // ~100ms of silence
+		}
+		else
+		{
+			modules[idx].agc_gate_count.store(0, std::memory_order_relaxed);
+			modules[idx].agc_gate.store(false, std::memory_order_relaxed);
+		}
 	}
 
 	// Record incoming packet

@@ -61,7 +61,7 @@ void CMonitorServer::Stop()
 // HTTP + WebSocket thread (mongoose)
 
 static const char *s_codec_names[] = {
-	"none", "dstar", "dmr", "c2_1600", "c2_3200", "p25", "usrp", "svx"
+	"none", "dstar", "dmr/ysf", "c2_1600", "c2_3200", "p25", "usrp", "svx"
 };
 
 static const char *codec_name(uint8_t c)

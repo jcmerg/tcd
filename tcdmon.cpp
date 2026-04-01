@@ -298,10 +298,11 @@ static void draw_flow(int y, int x, int width, const ModuleData &m, const std::s
 	attron(COLOR_PAIR(3) | A_BOLD);
 	std::string targets;
 	if (m.codec_in != "dstar") targets += "DStar ";
-	if (m.codec_in != "dmr") targets += "DMR ";
+	if (m.codec_in != "dmr/ysf") targets += "DMR/YSF ";
 	if (m.codec_in != "c2_1600" && m.codec_in != "c2_3200") targets += "M17 ";
 	if (m.codec_in != "p25") targets += "P25 ";
-	if (m.codec_in != "usrp" && m.codec_in != "svx") targets += "USRP";
+	if (m.codec_in != "usrp") targets += "USRP ";
+	if (m.codec_in != "svx") targets += "SVX";
 	mvprintw(y, col, "%s", targets.c_str());
 	attroff(COLOR_PAIR(3) | A_BOLD);
 }

@@ -19,7 +19,7 @@ LDFLAGS = -lftd2xx -limbe_vocoder -pthread -lmd380_vocoder
 # Explicit source list (includes urfd shared files)
 SRCS = Configure.cpp Controller.cpp DV3000.cpp DV3003.cpp DVSIDevice.cpp \
        IP.cpp Main.cpp TCSocket.cpp TranscoderPacket.cpp \
-       MonitorServer.cpp monitor_html.cpp \
+       MonitorServer.cpp StatsLogger.cpp monitor_html.cpp \
        codec2/codebooks.cpp codec2/codec2.cpp codec2/kiss_fft.cpp \
        codec2/lpc.cpp codec2/nlp.cpp codec2/pack.cpp codec2/qbase.cpp \
        codec2/quantise.cpp

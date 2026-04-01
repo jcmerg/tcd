@@ -47,6 +47,9 @@
 #define MONITORENABLE  "Monitor"
 #define MONITORHTTP    "MonitorHttpPort"
 #define MONITORSTATS   "MonitorStatsPort"
+#define STATSLOG       "StatsLog"
+#define STATSLOGDIR    "StatsLogDir"
+#define STATSLOGRETAIN "StatsLogRetain"
 
 static inline void split(const std::string &s, char delim, std::vector<std::string> &v)
 {
@@ -172,6 +175,12 @@ bool CConfigure::ReadData(const std::string &path)
 			monitor_http_port = (uint16_t)std::stoul(value);
 		else if (0 == key.compare(MONITORSTATS))
 			monitor_stats_port = (uint16_t)std::stoul(value);
+		else if (0 == key.compare(STATSLOG))
+			statslog_enabled = IS_TRUE(value[0]);
+		else if (0 == key.compare(STATSLOGDIR))
+			statslog_dir = value;
+		else if (0 == key.compare(STATSLOGRETAIN))
+			statslog_retain = std::stoi(value);
 		else
 			badParam(key);
 	}

@@ -181,7 +181,7 @@ function flowDiagram(mod, m, cfg) {
   // Determine gain for this codec direction
   let gainIn = 0, gainLabel = '';
   if (codec === 'dstar') { gainIn = cfg.gain_dstar_in; gainLabel = 'DStarIn'; }
-  else if (codec === 'dmr') { gainIn = cfg.gain_dmr_in; gainLabel = 'DmrIn'; }
+  else if (codec === 'dmr/ysf') { gainIn = cfg.gain_dmr_in; gainLabel = 'DmrIn'; }
   else if (codec === 'usrp') { gainIn = cfg.gain_usrp_rx; gainLabel = 'UsrpRx'; }
   else if (codec === 'svx') { gainLabel = 'SVX'; }
   else if (codec === 'p25' || codec === 'c2_1600' || codec === 'c2_3200') { gainLabel = codec; }
@@ -192,10 +192,11 @@ function flowDiagram(mod, m, cfg) {
   // Build output targets
   let targets = [];
   if (codec !== 'dstar') targets.push('D-Star');
-  if (codec !== 'dmr') targets.push('DMR');
+  if (codec !== 'dmr/ysf') targets.push('DMR/YSF');
   if (codec !== 'c2_1600' && codec !== 'c2_3200') targets.push('M17');
   if (codec !== 'p25') targets.push('P25');
-  if (codec !== 'usrp' && codec !== 'svx') targets.push('USRP');
+  if (codec !== 'usrp') targets.push('USRP');
+  if (codec !== 'svx') targets.push('SVX');
 
   return `<div class="flow">
     <div class="flow-row">

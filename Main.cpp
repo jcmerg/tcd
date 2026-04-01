@@ -23,6 +23,7 @@
 #include "Configure.h"
 #include "TcdStats.h"
 #include "MonitorServer.h"
+#include "StatsLogger.h"
 
 // the global objects
 CConfigure     g_Conf;
@@ -76,10 +77,15 @@ int main(int argc, char *argv[])
 		g_Monitor.Start(g_Conf.GetMonitorHttpPort(), g_Conf.GetMonitorStatsPort());
 	}
 
+	// Start stats CSV logger
+	g_StatsLog.Configure(g_Conf.GetStatsLogEnabled(), g_Conf.GetStatsLogDir(), g_Conf.GetStatsLogRetain());
+	g_StatsLog.Start();
+
 	std::cout << "Hybrid Transcoder version 0.1.1 successfully started" << std::endl;
 
 	pause();
 
+	g_StatsLog.Stop();
 	g_Monitor.Stop();
 	g_Cont.Stop();
 

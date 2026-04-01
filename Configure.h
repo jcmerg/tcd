@@ -52,6 +52,11 @@ public:
 	bool     GetMonitorEnabled(void) const   { return monitor_enabled; }
 	const std::string &GetIniPath(void) const { return ini_path; }
 
+	// Stats logging
+	bool               GetStatsLogEnabled(void) const { return statslog_enabled; }
+	const std::string &GetStatsLogDir(void) const     { return statslog_dir; }
+	int                GetStatsLogRetain(void) const   { return statslog_retain; }
+
 private:
 	std::string tcmods, address, ini_path;
 	std::vector<std::string> device_serials;
@@ -67,6 +72,9 @@ private:
 	bool     monitor_enabled    = true;
 	uint16_t monitor_http_port  = 8080;
 	uint16_t monitor_stats_port = 8081;
+	bool        statslog_enabled = false;
+	std::string statslog_dir     = "/tmp/tcd-stats";
+	int         statslog_retain  = 24;
 
 	int getSigned(const std::string &key, const std::string &value) const;
 	void badParam(const std::string &key) const;

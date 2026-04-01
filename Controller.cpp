@@ -32,6 +32,7 @@
 #include "Controller.h"
 #include "Configure.h"
 #include "TcdStats.h"
+#include "StatsLogger.h"
 
 extern CTcdStats g_Stats;
 
@@ -495,6 +496,7 @@ void CController::ReadReflectorThread()
 					ms.peak_out.store(-100.0f, std::memory_order_relaxed);
 					ms.agc_gain_db.store(0.0f, std::memory_order_relaxed);
 					ms.agc_gate.store(false, std::memory_order_relaxed);
+					ms.agc_gate_count.store(0, std::memory_order_relaxed);
 				}
 			}
 		}
@@ -518,22 +520,9 @@ void CController::ReadReflectorThread()
 			queue.pop();
 			g_Stats.PacketIn(packet->GetModule(), packet->GetStreamId(), packet->GetCodecIn());
 			g_Stats.reflector.packets_rx.fetch_add(1, std::memory_order_relaxed);
-			// Reset module display when stream ends
-			if (packet->IsLast())
-			{
-				int idx = packet->GetModule() - 'A';
-				if (idx >= 0 && idx < CTcdStats::MAX_MODULES)
-				{
-					g_Stats.modules[idx].codec_in.store(0, std::memory_order_relaxed);  // none
-					g_Stats.modules[idx].stream_id.store(0, std::memory_order_relaxed);
-					g_Stats.modules[idx].rms_in.store(-100.0f, std::memory_order_relaxed);
-					g_Stats.modules[idx].peak_in.store(-100.0f, std::memory_order_relaxed);
-					g_Stats.modules[idx].rms_out.store(-100.0f, std::memory_order_relaxed);
-					g_Stats.modules[idx].peak_out.store(-100.0f, std::memory_order_relaxed);
-					g_Stats.modules[idx].agc_gain_db.store(0.0f, std::memory_order_relaxed);
-					g_Stats.modules[idx].agc_gate.store(false, std::memory_order_relaxed);
-				}
-			}
+			// Idle reset is handled by 2s timeout in reconf loop
+			// (not here, because the packet still flows through the pipeline
+			// and Route functions would overwrite the reset values)
 			switch (packet->GetCodecIn())
 			{
 			case ECodecType::dstar:
@@ -766,6 +755,13 @@ void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	}
 	packet->SetAudioSamples(tmp, false);
 	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
+	{
+		int i = packet->GetModule() - 'A';
+		auto &ms = g_Stats.modules[i];
+		g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "dmr",
+			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+			ms.agc_gain_db.load(), ms.agc_gate.load());
+	}
 
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
@@ -1045,6 +1041,13 @@ void CController::RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet)
 			g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
 		}
 		g_Stats.UpdateLevelsOut(packet->GetModule(), packet->GetAudioSamples(), 160);
+		{
+			int i = packet->GetModule() - 'A';
+			auto &ms = g_Stats.modules[i];
+			g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "dstar",
+				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+				ms.agc_gain_db.load(), ms.agc_gate.load());
+		}
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
 		usrp_queue.push(packet);
@@ -1052,7 +1055,7 @@ void CController::RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet)
 		{
 			if (mixed_mode)
 			{
-				
+
 				char mod = packet->GetModule();
 				auto it = std::string(g_Conf.GetTCMods()).find(mod);
 				uint8_t dmr_ch = (it == 0) ? 1 : 2;
@@ -1088,6 +1091,13 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 			g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
 		}
 		g_Stats.UpdateLevelsOut(packet->GetModule(), packet->GetAudioSamples(), 160);
+		{
+			int i = packet->GetModule() - 'A';
+			auto &ms = g_Stats.modules[i];
+			g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "dmr",
+				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+				ms.agc_gain_db.load(), ms.agc_gate.load());
+		}
 		// Re-encode DMR from AGC'd PCM via md380 software vocoder
 		// Only when DmrReencodeGain is explicitly set (non-zero)
 		// AGC alone does not trigger re-encode to save CPU on low-power devices
