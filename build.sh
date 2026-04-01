@@ -6,8 +6,8 @@
 # Dependencies (auto-installed):
 #   - libftd2xx (FTDI driver) — from ftdichip.com
 #   - libimbe_vocoder — from jcmerg/imbe_vocoder
-#   - libmd380_vocoder — ARM native (jcmerg/md380_vocoder)
-#                        or x86_64 via dynarmic (jcmerg/md380_vocoder_dynarmic)
+#   - libmd380_vocoder — armhf native (jcmerg/md380_vocoder)
+#                        or x86_64/aarch64 via dynarmic (jcmerg/md380_vocoder_dynarmic)
 #   - urfd (for shared TCPacketDef.h/TCSocket.h)
 
 set -e
@@ -19,12 +19,21 @@ IMBE_REPO="https://github.com/jcmerg/imbe_vocoder.git"
 MD380_ARM_REPO="https://github.com/jcmerg/md380_vocoder.git"
 MD380_X64_REPO="https://github.com/jcmerg/md380_vocoder_dynarmic.git"
 FTDI_URL_X64="https://ftdichip.com/wp-content/uploads/2025/03/libftd2xx-linux-x86_64-1.4.33.tgz"
-FTDI_URL_ARM="https://ftdichip.com/wp-content/uploads/2025/03/libftd2xx-linux-arm-v7-hf-1.4.33.tgz"
+FTDI_URL_ARM32="https://ftdichip.com/wp-content/uploads/2025/03/libftd2xx-linux-arm-v7-hf-1.4.33.tgz"
+FTDI_URL_ARM64="https://ftdichip.com/wp-content/uploads/2025/03/libftd2xx-linux-arm-v8-1.4.33.tgz"
 INSTALL_DIR="/usr/local/bin"
-ARCH=$(uname -m)
+
+# Detect actual toolchain target, not kernel arch (handles armhf-on-aarch64)
+CC_ARCH=$(g++ -dumpmachine 2>/dev/null || true)
+case "$CC_ARCH" in
+    x86_64*)          ARCH="x86_64" ;;
+    aarch64*|arm64*)  ARCH="aarch64" ;;
+    arm*hf*|arm*eabi*) ARCH="armhf" ;;
+    *)                ARCH=$(uname -m) ;;   # fallback
+esac
 
 echo "=== Building tcd ==="
-echo "Architecture: $ARCH"
+echo "Architecture: $ARCH (compiler: $CC_ARCH)"
 
 # Check build tools
 for cmd in g++ make git; do
@@ -45,8 +54,10 @@ if [ ! -f /usr/local/include/ftd2xx.h ]; then
     echo "Installing libftd2xx..."
     if [ "$ARCH" = "x86_64" ]; then
         FTDI_URL="$FTDI_URL_X64"
-    elif [ "$ARCH" = "armv7l" ] || [ "$ARCH" = "armv6l" ] || [ "$ARCH" = "aarch64" ]; then
-        FTDI_URL="$FTDI_URL_ARM"
+    elif [ "$ARCH" = "aarch64" ]; then
+        FTDI_URL="$FTDI_URL_ARM64"
+    elif [ "$ARCH" = "armhf" ]; then
+        FTDI_URL="$FTDI_URL_ARM32"
     else
         echo "ERROR: Unsupported architecture $ARCH for libftd2xx"
         exit 1
@@ -89,8 +100,8 @@ fi
 # ---------------------------------------------------------------
 if [ ! -f /usr/local/lib/libmd380_vocoder.a ]; then
     echo "Building md380_vocoder..."
-    if [ "$ARCH" = "x86_64" ]; then
-        # x86_64: use dynarmic (ARM JIT emulation)
+    if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "aarch64" ]; then
+        # x86_64/aarch64: use dynarmic (ARM Cortex-M JIT emulation)
         for cmd in cmake unzip python3 xxd; do
             if ! command -v $cmd &>/dev/null; then
                 echo "Installing cmake and tools..."
