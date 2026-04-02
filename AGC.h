@@ -123,10 +123,10 @@ public:
 			// Release (gain increasing = quiet input)
 			alpha = m_releaseAlpha;
 
-			// Fast release after gate: 3x speed for first 3 frames (~60ms)
+			// Fast release after gate: 5x speed for first 5 frames (~100ms)
 			// This prevents the first syllable after a pause from being too quiet
-			if (state.wasGated && state.postGateFrames < 3)
-				alpha = std::min(alpha * 3.0f, 0.5f);  // cap at 0.5 to prevent overshoot
+			if (state.wasGated && state.postGateFrames < 5)
+				alpha = std::min(alpha * 5.0f, 0.5f);  // cap at 0.5 to prevent overshoot
 		}
 
 		state.gain += alpha * (desiredGain - state.gain);
@@ -140,7 +140,7 @@ public:
 		if (state.wasGated)
 		{
 			state.postGateFrames++;
-			if (state.postGateFrames >= 3)
+			if (state.postGateFrames >= 5)
 				state.wasGated = false;  // back to normal tracking
 		}
 		state.gateFrames = 0;

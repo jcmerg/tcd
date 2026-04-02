@@ -615,6 +615,7 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		{
 			int16_t tmp[160];
 			memcpy(tmp, audio_store[packet->GetModule()], sizeof(tmp));
+			g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
 			m_agc.Process(tmp, 160, packet->GetStreamId());
 			packet->SetAudioSamples(tmp, false);
 		}
@@ -622,6 +623,7 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		{
 			int16_t tmp[160];
 			c2_32[packet->GetModule()]->codec2_decode(tmp, packet->GetM17Data()+8);
+			g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
 			m_agc.Process(tmp, 160, packet->GetStreamId());
 			packet->SetAudioSamples(tmp, false);
 		}
@@ -633,6 +635,7 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		{
 			int16_t tmp[320];
 			c2_16[m]->codec2_decode(tmp, packet->GetM17Data());
+			g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
 			m_agc.Process(tmp, 160, packet->GetStreamId());
 			packet->SetAudioSamples(tmp, false);
 			// AGC the second half too before storing
@@ -643,14 +646,23 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		{
 			int16_t tmp[160];
 			c2_32[m]->codec2_decode(tmp, packet->GetM17Data());
+			g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
 			m_agc.Process(tmp, 160, packet->GetStreamId());
 			packet->SetAudioSamples(tmp, false);
 		}
 	}
+	g_Stats.UpdateLevelsOut(packet->GetModule(), packet->GetAudioSamples(), 160);
+	{
+		int i = packet->GetModule() - 'A';
+		auto &ms = g_Stats.modules[i];
+		g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "codec2",
+			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+			ms.agc_gain_db.load(), ms.agc_gate.load());
+	}
 	// the only thing left is to encode the two ambe, so push the packet onto both AMBE queues
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
-		
+
 		mixed_dv3003->AddPacketToChannel(packet, 0);
 	}
 	else
@@ -821,11 +833,20 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 		std::lock_guard<std::mutex> lock(p25vocoder_mux);
 		p25vocoder.decode_4400(tmp, (uint8_t*)packet->GetP25Data());
 	}
+	g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
 	m_agc.Process(tmp, 160, packet->GetStreamId());
 	packet->SetAudioSamples(tmp, false);
+	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
+	{
+		int i = packet->GetModule() - 'A';
+		auto &ms = g_Stats.modules[i];
+		g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "imbe",
+			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+			ms.agc_gain_db.load(), ms.agc_gate.load());
+	}
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
-		
+
 		mixed_dv3003->AddPacketToChannel(packet, 0);
 	}
 	else
@@ -836,7 +857,7 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		if (mixed_mode)
 		{
-			
+
 			char mod = packet->GetModule();
 			auto it = std::string(g_Conf.GetTCMods()).find(mod);
 			uint8_t dmr_ch = (it == 0) ? 1 : 2;
@@ -910,12 +931,21 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		memcpy(tmp, p, sizeof(tmp));
 	}
+	g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
 	m_agc.Process(tmp, 160, packet->GetStreamId());
 	packet->SetAudioSamples(tmp, false);
+	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
+	{
+		int i = packet->GetModule() - 'A';
+		auto &ms = g_Stats.modules[i];
+		g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "usrp",
+			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+			ms.agc_gain_db.load(), ms.agc_gate.load());
+	}
 
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
-		
+
 		mixed_dv3003->AddPacketToChannel(packet, 0);
 	}
 	else
@@ -926,7 +956,7 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		if (mixed_mode)
 		{
-			
+
 			char mod = packet->GetModule();
 			auto it = std::string(g_Conf.GetTCMods()).find(mod);
 			uint8_t dmr_ch = (it == 0) ? 1 : 2;
@@ -974,12 +1004,21 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 	int16_t tmp[160];
 	memcpy(tmp, p, sizeof(tmp));
 
+	g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
 	m_agc.Process(tmp, 160, packet->GetStreamId());
 	packet->SetAudioSamples(tmp, false);
+	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
+	{
+		int i = packet->GetModule() - 'A';
+		auto &ms = g_Stats.modules[i];
+		g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "svx",
+			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+			ms.agc_gain_db.load(), ms.agc_gate.load());
+	}
 
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
-		
+
 		mixed_dv3003->AddPacketToChannel(packet, 0);  // ch0 = D-Star
 	}
 	else
@@ -990,7 +1029,7 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		if (mixed_mode)
 		{
-			
+
 			char mod = packet->GetModule();
 			auto it = std::string(g_Conf.GetTCMods()).find(mod);
 			uint8_t dmr_ch = (it == 0) ? 1 : 2;
