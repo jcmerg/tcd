@@ -538,6 +538,36 @@ int main(int argc, char *argv[])
 			row++;
 		}
 
+		// md380 software vocoder
+		auto md380_json = json_obj(last_json, "md380");
+		if (!md380_json.empty() && json_bool(md380_json, "available"))
+		{
+			std::string active_mod = json_str(md380_json, "active_module");
+			bool active = !active_mod.empty();
+			bool reencode = json_bool(md380_json, "reencode_active");
+			int cached = json_int(md380_json, "cached_streams");
+			int enc = json_int(md380_json, "encodes");
+			int dec = json_int(md380_json, "decodes");
+			int re = json_int(md380_json, "reencodes");
+
+			if (active) attron(COLOR_PAIR(7) | A_BOLD);
+			else attron(COLOR_PAIR(1));
+			mvprintw(row, 2, "%s", active ? ">>" : "OK");
+			attroff(COLOR_PAIR(1) | COLOR_PAIR(7) | A_BOLD);
+
+			printw("  md380 (Software) [dmr]  re-enc:%s  cache:%d", reencode ? "ON" : "off", cached);
+			if (active)
+			{
+				attron(COLOR_PAIR(7));
+				printw("  %s", active_mod.c_str());
+				attroff(COLOR_PAIR(7));
+			}
+			attron(COLOR_PAIR(5));
+			printw("  enc:%d dec:%d re:%d", enc, dec, re);
+			attroff(COLOR_PAIR(5));
+			row++;
+		}
+
 		// AGC config summary
 		row++;
 		bool agc_on = json_bool(cfg_json, "agc_enabled");

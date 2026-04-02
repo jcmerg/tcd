@@ -59,6 +59,16 @@ void CController::ApplyGain(int16_t *samples, int count, int32_t num)
 	}
 }
 
+static void Md380Stat(char module, std::atomic<uint32_t> &counter)
+{
+	counter.fetch_add(1, std::memory_order_relaxed);
+	g_Stats.md380.active_module.store(module, std::memory_order_relaxed);
+	g_Stats.md380.last_active_ms.store(
+		(uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::steady_clock::now().time_since_epoch()).count(),
+		std::memory_order_relaxed);
+}
+
 CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256), outgain_dstar_num(256), outgain_dmr_num(256), outgain_usrp_num(256), outgain_imbe_num(256) {}
 
 bool CController::Start()
@@ -454,6 +464,7 @@ bool CController::InitVocoders()
 
 	// Always init md380 software vocoder (used for DMR re-encode after AGC)
 	md380_init();
+	g_Stats.md380.available.store(true, std::memory_order_relaxed);
 	if (dmrsf_device)
 		std::cout << "md380 vocoder: DMR re-encode after AGC" << std::endl;
 	else
@@ -553,6 +564,19 @@ void CController::ReadReflectorThread()
 				};
 				syncDev(dstar_device.get());
 				if (dmrsf_device) syncDev(dmrsf_device.get());
+			}
+
+			// Sync md380 software vocoder stats
+			{
+				auto now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::steady_clock::now().time_since_epoch()).count();
+				uint64_t last = g_Stats.md380.last_active_ms.load(std::memory_order_relaxed);
+				if (last > 0 && (now_ms - last) > 2000)
+					g_Stats.md380.active_module.store(' ', std::memory_order_relaxed);
+				g_Stats.md380.reencode_active.store(
+					m_agc.IsEnabled() || outgain_dmr_num != 256 || dmr_reencode_num != 256,
+					std::memory_order_relaxed);
+				g_Stats.md380.cached_streams.store((int)md380_state_cache.size(), std::memory_order_relaxed);
 			}
 		}
 
@@ -746,6 +770,7 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		ApplyGain(dmr_buf, 160, outgain_dmr_num);
 		std::lock_guard<std::mutex> lock(md380_mux);
 		md380_encode_fec(ambe2, dmr_buf);
+		Md380Stat(packet->GetModule(), g_Stats.md380.encodes);
 		packet->SetDMRData(ambe2);
 	}
 
@@ -813,6 +838,7 @@ void CController::AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet)
 		}
 		else
 			md380_encode_fec(ambe2, gained);
+		Md380Stat(packet->GetModule(), g_Stats.md380.encodes);
 	}
 	packet->SetDMRData(ambe2);
 
@@ -828,6 +854,7 @@ void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		std::lock_guard<std::mutex> lock(md380_mux);
 		md380_decode_fec(const_cast<uint8_t*>(packet->GetDMRData()), tmp);
+		Md380Stat(packet->GetModule(), g_Stats.md380.decodes);
 	}
 	if (ambe_out_num != 256)
 	{
@@ -1262,6 +1289,7 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 					tmp[i] = (int16_t)((tmp[i] * dmr_reencode_num) >> 8);
 			}
 			md380_encode_fec(ambe2, tmp);
+			Md380Stat(packet->GetModule(), g_Stats.md380.reencodes);
 			packet->SetDMRData(ambe2);
 		}
 		codec2_queue.push(packet);

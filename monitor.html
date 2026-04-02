@@ -267,6 +267,20 @@ function render() {
       ${d.errors > 0 ? `<span style="color:#f44336">err: ${d.errors}</span>` : ''}
     </div>`;
   }
+  // md380 software vocoder
+  if (data.md380 && data.md380.available) {
+    const m = data.md380;
+    const active = m.active_module && m.active_module.length > 0;
+    const dotClass = active ? 'active' : 'online';
+    dhtml += `<div class="device">
+      <div class="device-dot ${dotClass}"></div>
+      <strong>md380</strong>
+      <span class="device-info">Software [dmr]</span>
+      <span class="device-buf">re-enc: ${m.reencode_active ? 'ON' : 'off'} cache: ${m.cached_streams}</span>
+      ${active ? `<span style="color:#2196f3">${m.active_module}</span>` : ''}
+      <span style="color:#888;font-size:11px">enc:${m.encodes} dec:${m.decodes} re:${m.reencodes}</span>
+    </div>`;
+  }
   document.getElementById('devices').innerHTML = dhtml || '<span style="color:#555">no devices</span>';
 
   // Reflector

@@ -121,7 +121,18 @@ std::string CMonitorServer::BuildStatsJson()
 		js << "]}";
 
 	}
-	js << "],\"reflector\":{"
+	js << "],\"md380\":{"
+	   << "\"available\":" << (g_Stats.md380.available.load(std::memory_order_relaxed) ? "true" : "false")
+	   << ",\"reencode_active\":" << (g_Stats.md380.reencode_active.load(std::memory_order_relaxed) ? "true" : "false")
+	   << ",\"encodes\":" << g_Stats.md380.encodes.load(std::memory_order_relaxed)
+	   << ",\"decodes\":" << g_Stats.md380.decodes.load(std::memory_order_relaxed)
+	   << ",\"reencodes\":" << g_Stats.md380.reencodes.load(std::memory_order_relaxed)
+	   << ",\"cached_streams\":" << g_Stats.md380.cached_streams.load(std::memory_order_relaxed);
+	{
+		char mod = g_Stats.md380.active_module.load(std::memory_order_relaxed);
+		js << ",\"active_module\":\"" << (mod != ' ' ? std::string(1, mod) : "") << "\"";
+	}
+	js << "},\"reflector\":{"
 	   << "\"connected\":" << (g_Stats.reflector.connected.load(std::memory_order_relaxed) ? "true" : "false")
 	   << ",\"pkts_rx\":" << g_Stats.reflector.packets_rx.load(std::memory_order_relaxed)
 	   << ",\"pkts_tx\":" << g_Stats.reflector.packets_tx.load(std::memory_order_relaxed)

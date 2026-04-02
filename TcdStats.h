@@ -53,6 +53,18 @@ struct DeviceStats
 	std::atomic<uint64_t> ch_last_ms[MAX_CHANNELS] = {0, 0, 0};
 };
 
+struct Md380Stats
+{
+	std::atomic<bool> available{false};       // md380 vocoder is linked
+	std::atomic<bool> reencode_active{false}; // re-encode triggered by AGC/OutputGainDMR
+	std::atomic<uint32_t> encodes{0};        // total encode calls
+	std::atomic<uint32_t> decodes{0};        // total decode calls
+	std::atomic<uint32_t> reencodes{0};      // total re-encode calls
+	std::atomic<int> cached_streams{0};      // streams with cached md380 state
+	std::atomic<char> active_module{' '};    // last active module
+	std::atomic<uint64_t> last_active_ms{0}; // timestamp of last operation
+};
+
 struct ReflectorStats
 {
 	std::atomic<bool> connected{false};
@@ -68,6 +80,7 @@ public:
 
 	ModuleStats    modules[MAX_MODULES];    // indexed by module - 'A'
 	DeviceStats    devices[MAX_DEVICES];
+	Md380Stats     md380;
 	int            num_devices{0};
 	ReflectorStats reflector;
 
