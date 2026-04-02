@@ -1226,10 +1226,9 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		}
 		// Output gains applied in encode functions and DVSI FeedDevice
 		// Re-encode DMR from AGC'd PCM via md380 software vocoder
-		// Only when DmrReencodeGain is explicitly set (non-zero)
-		// AGC alone does not trigger re-encode to save CPU on low-power devices
-		// Re-encode DMR from AGC'd PCM via md380 software vocoder
-		if (dmr_reencode_num != 256)
+		// Always re-encode when AGC or OutputGainDMR is active, otherwise the
+		// original (un-gained) AMBE data passes through unchanged
+		if (m_agc.IsEnabled() || outgain_dmr_num != 256 || dmr_reencode_num != 256)
 		{
 			uint8_t ambe2[9];
 			const int16_t *pcm = packet->GetAudioSamples();
@@ -1255,8 +1254,13 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 				md380_enc_streamid = sid;
 			}
 			int16_t tmp[160];
-			for (int i = 0; i < 160; i++)
-				tmp[i] = (int16_t)((pcm[i] * dmr_reencode_num) >> 8);
+			memcpy(tmp, pcm, sizeof(tmp));
+			ApplyGain(tmp, 160, outgain_dmr_num);
+			if (dmr_reencode_num != 256)
+			{
+				for (int i = 0; i < 160; i++)
+					tmp[i] = (int16_t)((tmp[i] * dmr_reencode_num) >> 8);
+			}
 			md380_encode_fec(ambe2, tmp);
 			packet->SetDMRData(ambe2);
 		}
