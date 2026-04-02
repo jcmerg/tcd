@@ -25,10 +25,10 @@
 #include "Configure.h"
 
 // ini file keywords
-#define USRPTXGAIN     "UsrpTxGain"
-#define USRPRXGAIN     "UsrpRxGain"
-#define DMRGAININ      "DmrYsfGainIn"
-#define DMRGAINOUT     "DmrYsfGainOut"
+#define USRPTXGAIN     "UsrpGainOut"
+#define USRPRXGAIN     "UsrpGainIn"
+#define DMRGAININ      "DmrGainIn"
+#define DMRGAINOUT     "DmrGainOut"
 #define DSTARGAININ    "DStarGainIn"
 #define DSTARGAINOUT   "DStarGainOut"
 #define DMRREENCODE    "DmrReencodeGain"

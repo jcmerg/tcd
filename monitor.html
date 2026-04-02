@@ -103,14 +103,17 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
   <h2>Configuration</h2>
   <div class="grid">
     <div>
-      <h2 style="font-size:13px">Gains (dB)</h2>
-      <div class="config-row"><label>Output Gain</label><input type="range" min="-40" max="10" id="g_output"><span class="val" id="v_output">0</span></div>
-      <div class="config-row"><label>D-Star In</label><input type="range" min="-40" max="40" id="g_dstar_in"><span class="val" id="v_dstar_in">0</span></div>
-      <div class="config-row"><label>D-Star Out</label><input type="range" min="-40" max="40" id="g_dstar_out"><span class="val" id="v_dstar_out">0</span></div>
-      <div class="config-row"><label>DMR/YSF In</label><input type="range" min="-40" max="40" id="g_dmr_in"><span class="val" id="v_dmr_in">0</span></div>
-      <div class="config-row"><label>DMR/YSF Out</label><input type="range" min="-40" max="40" id="g_dmr_out"><span class="val" id="v_dmr_out">0</span></div>
-      <div class="config-row"><label>USRP RX</label><input type="range" min="-40" max="40" id="g_usrp_rx"><span class="val" id="v_usrp_rx">0</span></div>
-      <div class="config-row"><label>USRP TX</label><input type="range" min="-40" max="40" id="g_usrp_tx"><span class="val" id="v_usrp_tx">0</span></div>
+      <h2 style="font-size:13px">Master</h2>
+      <div class="config-row"><label>Master Output</label><input type="range" min="-20" max="20" id="g_output"><span class="val" id="v_output">0</span></div>
+      <h2 style="font-size:13px">DVSI Hardware</h2>
+      <div class="config-row"><label>D-Star DVSI In</label><input type="range" min="-40" max="40" id="g_dstar_in"><span class="val" id="v_dstar_in">0</span></div>
+      <div class="config-row"><label>D-Star DVSI Out</label><input type="range" min="-40" max="40" id="g_dstar_out"><span class="val" id="v_dstar_out">0</span></div>
+      <div class="config-row"><label>DMR DVSI In</label><input type="range" min="-40" max="40" id="g_dmr_in"><span class="val" id="v_dmr_in">0</span></div>
+      <div class="config-row"><label>DMR DVSI Out</label><input type="range" min="-40" max="40" id="g_dmr_out"><span class="val" id="v_dmr_out">0</span></div>
+      <h2 style="font-size:13px">USRP / SVX</h2>
+      <div class="config-row"><label>USRP Receive</label><input type="range" min="-40" max="40" id="g_usrp_rx"><span class="val" id="v_usrp_rx">0</span></div>
+      <div class="config-row"><label>USRP Transmit</label><input type="range" min="-40" max="40" id="g_usrp_tx"><span class="val" id="v_usrp_tx">0</span></div>
+      <h2 style="font-size:13px">Software Vocoder</h2>
       <div class="config-row"><label>DMR Re-encode</label><input type="range" min="-40" max="40" id="g_dmr_reencode"><span class="val" id="v_dmr_reencode">0</span></div>
     </div>
     <div>

@@ -133,7 +133,7 @@ std::string CMonitorServer::BuildStatsJson()
 	   << ",\"gain_usrp_rx\":" << g_Stats.config.gain_usrp_rx.load()
 	   << ",\"gain_usrp_tx\":" << g_Stats.config.gain_usrp_tx.load()
 	   << ",\"gain_dmr_reencode\":" << g_Stats.config.gain_dmr_reencode.load()
-	   << ",\"output_gain\":" << g_Stats.config.output_gain.load()
+	   << ",\"gain_output\":" << g_Stats.config.output_gain.load()
 	   << "}}";
 
 	return js.str();
@@ -426,10 +426,10 @@ bool CMonitorServer::SaveConfig(const std::string &ini_path)
 
 				if (key == "DStarGainIn")       { out << key << " = " << g_Stats.config.gain_dstar_in.load() << "\n"; continue; }
 				if (key == "DStarGainOut")      { out << key << " = " << g_Stats.config.gain_dstar_out.load() << "\n"; continue; }
-				if (key == "DmrYsfGainIn")      { out << key << " = " << g_Stats.config.gain_dmr_in.load() << "\n"; continue; }
-				if (key == "DmrYsfGainOut")     { out << key << " = " << g_Stats.config.gain_dmr_out.load() << "\n"; continue; }
-				if (key == "UsrpRxGain")        { out << key << " = " << g_Stats.config.gain_usrp_rx.load() << "\n"; continue; }
-				if (key == "UsrpTxGain")        { out << key << " = " << g_Stats.config.gain_usrp_tx.load() << "\n"; continue; }
+				if (key == "DmrGainIn")         { out << key << " = " << g_Stats.config.gain_dmr_in.load() << "\n"; continue; }
+				if (key == "DmrGainOut")        { out << key << " = " << g_Stats.config.gain_dmr_out.load() << "\n"; continue; }
+				if (key == "UsrpGainIn")        { out << key << " = " << g_Stats.config.gain_usrp_rx.load() << "\n"; continue; }
+				if (key == "UsrpGainOut")       { out << key << " = " << g_Stats.config.gain_usrp_tx.load() << "\n"; continue; }
 				if (key == "DmrReencodeGain")   { out << key << " = " << g_Stats.config.gain_dmr_reencode.load() << "\n"; continue; }
 				if (key == "OutputGain")        { out << key << " = " << g_Stats.config.output_gain.load() << "\n"; continue; }
 				if (key == "AGC")               { out << key << " = " << (g_Stats.config.agc_enabled.load() ? "true" : "false") << "\n"; continue; }
