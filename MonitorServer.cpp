@@ -107,9 +107,11 @@ std::string CMonitorServer::BuildStatsJson()
 		if (i > 0) js << ",";
 		js << "{\"serial\":\"" << d.serial << "\""
 		   << ",\"type\":\"" << d.type << "\""
+		   << ",\"role\":\"" << d.role << "\""
 		   << ",\"buf_depth\":" << d.buf_depth.load(std::memory_order_relaxed)
 		   << ",\"errors\":" << d.errors.load(std::memory_order_relaxed)
 		   << ",\"online\":" << (d.online.load(std::memory_order_relaxed) ? "true" : "false")
+		   << ",\"active\":" << (d.active.load(std::memory_order_relaxed) ? "true" : "false")
 		   << "}";
 	}
 	js << "],\"reflector\":{"
@@ -131,6 +133,7 @@ std::string CMonitorServer::BuildStatsJson()
 	   << ",\"gain_usrp_rx\":" << g_Stats.config.gain_usrp_rx.load()
 	   << ",\"gain_usrp_tx\":" << g_Stats.config.gain_usrp_tx.load()
 	   << ",\"gain_dmr_reencode\":" << g_Stats.config.gain_dmr_reencode.load()
+	   << ",\"output_gain\":" << g_Stats.config.output_gain.load()
 	   << "}}";
 
 	return js.str();
@@ -203,6 +206,7 @@ void CMonitorServer::HandleRest(struct mg_connection *c, struct mg_http_message 
 				else if (strncmp(p, "usrp_rx", 7) == 0)       g_Stats.config.gain_usrp_rx.store(db);
 				else if (strncmp(p, "usrp_tx", 7) == 0)       g_Stats.config.gain_usrp_tx.store(db);
 				else if (strncmp(p, "dmr_reencode", 12) == 0)  g_Stats.config.gain_dmr_reencode.store(db);
+				else if (strncmp(p, "output", 6) == 0)         g_Stats.config.output_gain.store(db);
 			}
 		}
 		mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", "{\"status\":\"ok\"}");
@@ -427,6 +431,7 @@ bool CMonitorServer::SaveConfig(const std::string &ini_path)
 				if (key == "UsrpRxGain")        { out << key << " = " << g_Stats.config.gain_usrp_rx.load() << "\n"; continue; }
 				if (key == "UsrpTxGain")        { out << key << " = " << g_Stats.config.gain_usrp_tx.load() << "\n"; continue; }
 				if (key == "DmrReencodeGain")   { out << key << " = " << g_Stats.config.gain_dmr_reencode.load() << "\n"; continue; }
+				if (key == "OutputGain")        { out << key << " = " << g_Stats.config.output_gain.load() << "\n"; continue; }
 				if (key == "AGC")               { out << key << " = " << (g_Stats.config.agc_enabled.load() ? "true" : "false") << "\n"; continue; }
 				if (key == "AGCTarget")         { out << key << " = " << g_Stats.config.agc_target.load() << "\n"; continue; }
 				if (key == "AGCAttack")         { out << key << " = " << g_Stats.config.agc_attack.load() << "\n"; continue; }

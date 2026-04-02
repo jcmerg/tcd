@@ -43,9 +43,12 @@ struct DeviceStats
 {
 	std::string serial;
 	std::string type;       // "DV3000" or "DV3003"
+	std::string role;       // "dstar", "dmr", "mixed"
 	std::atomic<unsigned int> buf_depth{0};
 	std::atomic<uint32_t> errors{0};
 	std::atomic<bool> online{false};
+	std::atomic<bool> active{false};            // currently processing audio
+	std::atomic<uint64_t> last_packet_ms{0};    // timestamp of last packet
 };
 
 struct ReflectorStats
@@ -83,6 +86,7 @@ public:
 		std::atomic<int>   gain_usrp_rx{0};
 		std::atomic<int>   gain_usrp_tx{0};
 		std::atomic<int>   gain_dmr_reencode{0};
+		std::atomic<int>   output_gain{0};          // post-AGC gain for all codecs (dB)
 	} config;
 
 	// Module name list (set at startup)

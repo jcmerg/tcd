@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
 		g_Stats.config.gain_usrp_rx.store(g_Conf.GetGain(EGainType::usrprx));
 		g_Stats.config.gain_usrp_tx.store(g_Conf.GetGain(EGainType::usrptx));
 		g_Stats.config.gain_dmr_reencode.store(g_Conf.GetGain(EGainType::dmrreencode));
+		g_Stats.config.output_gain.store(g_Conf.GetGain(EGainType::output));
 		g_Monitor.Start(g_Conf.GetMonitorHttpPort(), g_Conf.GetMonitorStatsPort());
 	}
 

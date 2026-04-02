@@ -39,6 +39,7 @@ public:
 	void CloseDevice();
 	void AddPacket(const std::shared_ptr<CTranscoderPacket> packet);
 	std::string GetProductID() { return productid; }
+	unsigned int GetBufferDepth() const { return buffer_depth.load(std::memory_order_relaxed); }
 
 	// Virtual hooks for mixed-mode support
 	virtual Encoding GetChannelEncoding(uint8_t channel) const { return type; }

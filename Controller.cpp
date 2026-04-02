@@ -45,13 +45,28 @@ int32_t CController::calcNumerator(int32_t db) const
 	return int32_t(roundf(num));
 }
 
-CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256) {}
+void CController::ApplyOutputGain(int16_t *samples, int count) const
+{
+	if (output_gain_num != 256)
+	{
+		for (int i = 0; i < count; i++)
+		{
+			int32_t v = ((int32_t)samples[i] * output_gain_num) >> 8;
+			if (v > 32767) v = 32767;
+			else if (v < -32768) v = -32768;
+			samples[i] = (int16_t)v;
+		}
+	}
+}
+
+CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256), output_gain_num(256) {}
 
 bool CController::Start()
 {
 	usrp_rx_num = calcNumerator(g_Conf.GetGain(EGainType::usrprx));
 	usrp_tx_num = calcNumerator(g_Conf.GetGain(EGainType::usrptx));
 	dmr_reencode_num = calcNumerator(g_Conf.GetGain(EGainType::dmrreencode));
+	output_gain_num = calcNumerator(g_Conf.GetGain(EGainType::output));
 	m_agc.Configure(g_Conf.GetAGCEnabled(), g_Conf.GetAGCTarget(), g_Conf.GetAGCAttack(), g_Conf.GetAGCRelease(), g_Conf.GetAGCMaxGainUp(), g_Conf.GetAGCMaxGainDown(), g_Conf.GetAGCNoiseGate());
 
 	if (InitVocoders() || tcClient.Open(g_Conf.GetAddress(), g_Conf.GetTCMods(), g_Conf.GetPort()))
@@ -85,6 +100,7 @@ void CController::ReconfigureAGC()
 	usrp_rx_num = calcNumerator(g_Stats.config.gain_usrp_rx.load());
 	usrp_tx_num = calcNumerator(g_Stats.config.gain_usrp_tx.load());
 	dmr_reencode_num = calcNumerator(g_Stats.config.gain_dmr_reencode.load());
+	output_gain_num = calcNumerator(g_Stats.config.output_gain.load());
 }
 
 void CController::Stop()
@@ -452,6 +468,9 @@ bool CController::InitVocoders()
 		};
 		if (!dv3000_dev.first.empty()) reg(dv3000_dev.first, dv3000_dev.second);
 		if (!dv3003_dev.first.empty()) reg(dv3003_dev.first, dv3003_dev.second);
+		// Set roles based on device assignment
+		if (di >= 1) g_Stats.devices[0].role = mixed_mode ? "dstar" : (dmrsf_device ? "dstar" : "dstar");
+		if (di >= 2) g_Stats.devices[1].role = mixed_mode ? "mixed" : "dmr";
 		g_Stats.num_devices = di;
 	}
 
@@ -498,6 +517,20 @@ void CController::ReadReflectorThread()
 					ms.agc_gate.store(false, std::memory_order_relaxed);
 					ms.agc_gate_count.store(0, std::memory_order_relaxed);
 				}
+			}
+
+			// Sync DVSI device stats (buf_depth, active)
+			{
+				int di = 0;
+				auto syncDev = [&](CDVDevice *dev) {
+					if (!dev || di >= CTcdStats::MAX_DEVICES) return;
+					unsigned bd = dev->GetBufferDepth();
+					g_Stats.devices[di].buf_depth.store(bd, std::memory_order_relaxed);
+					g_Stats.devices[di].active.store(bd > 0, std::memory_order_relaxed);
+					di++;
+				};
+				syncDev(dstar_device.get());
+				if (dmrsf_device) syncDev(dmrsf_device.get());
 			}
 		}
 
@@ -667,6 +700,12 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 			ms.agc_gain_db.load(), ms.agc_gate.load());
 	}
+	{
+		int16_t out[160];
+		memcpy(out, packet->GetAudioSamples(), sizeof(out));
+		ApplyOutputGain(out, 160);
+		packet->SetAudioSamples(out, false);
+	}
 	// the only thing left is to encode the two ambe, so push the packet onto both AMBE queues
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
@@ -782,10 +821,12 @@ void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 			ms.agc_gain_db.load(), ms.agc_gate.load());
 	}
+	ApplyOutputGain(tmp, 160);
+	packet->SetAudioSamples(tmp, false);
 
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
-		
+
 		mixed_dv3003->AddPacketToChannel(packet, 0);
 	}
 	else
@@ -856,6 +897,8 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 			ms.agc_gain_db.load(), ms.agc_gate.load());
 	}
+	ApplyOutputGain(tmp, 160);
+	packet->SetAudioSamples(tmp, false);
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
 
@@ -958,6 +1001,8 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 			ms.agc_gain_db.load(), ms.agc_gate.load());
 	}
+	ApplyOutputGain(tmp, 160);
+	packet->SetAudioSamples(tmp, false);
 
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
@@ -1035,6 +1080,8 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 			ms.agc_gain_db.load(), ms.agc_gate.load());
 	}
+	ApplyOutputGain(tmp, 160);
+	packet->SetAudioSamples(tmp, false);
 
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
@@ -1107,6 +1154,12 @@ void CController::RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet)
 				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 				ms.agc_gain_db.load(), ms.agc_gate.load());
 		}
+		{
+			int16_t out[160];
+			memcpy(out, packet->GetAudioSamples(), sizeof(out));
+			ApplyOutputGain(out, 160);
+			packet->SetAudioSamples(out, false);
+		}
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
 		usrp_queue.push(packet);
@@ -1156,6 +1209,12 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 			g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "dmr",
 				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 				ms.agc_gain_db.load(), ms.agc_gate.load());
+		}
+		{
+			int16_t out[160];
+			memcpy(out, packet->GetAudioSamples(), sizeof(out));
+			ApplyOutputGain(out, 160);
+			packet->SetAudioSamples(out, false);
 		}
 		// Re-encode DMR from AGC'd PCM via md380 software vocoder
 		// Only when DmrReencodeGain is explicitly set (non-zero)
