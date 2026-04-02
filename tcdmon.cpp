@@ -555,7 +555,7 @@ int main(int argc, char *argv[])
 			mvprintw(row, 2, "%s", active ? ">>" : "OK");
 			attroff(COLOR_PAIR(1) | COLOR_PAIR(7) | A_BOLD);
 
-			printw("  md380 (Software) [dmr]  re-enc:%s  cache:%d", reencode ? "ON" : "off", cached);
+			printw("  MD380 (Software) [dmr]  re-enc:%s  cache:%d", reencode ? "ON" : "off", cached);
 			if (active)
 			{
 				attron(COLOR_PAIR(7));
