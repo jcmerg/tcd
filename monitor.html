@@ -31,14 +31,14 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
 
 /* Signal flow diagram */
 .flow { margin: 8px 0; padding: 8px; background: #0a0a1a; border-radius: 6px; font-size: 12px; }
-.flow-row { display: flex; align-items: center; gap: 4px; margin: 3px 0; flex-wrap: wrap; }
-.flow-node { padding: 2px 6px; border-radius: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.flow-row { display: flex; align-items: center; gap: 4px; margin: 3px 0; }
+.flow-node { padding: 2px 6px; border-radius: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .flow-src { background: #1b5e20; color: #a5d6a7; }
 .flow-gain { background: #4a148c; color: #ce93d8; }
-.flow-agc { background: #e65100; color: #ffcc80; display: inline-block; width: 135px; }
-.flow-pcm { background: #01579b; color: #81d4fa; display: inline-block; width: 90px; }
+.flow-agc { background: #e65100; color: #ffcc80; flex: 0 0 135px; overflow: hidden; }
+.flow-pcm { background: #01579b; color: #81d4fa; flex: 0 0 90px; overflow: hidden; }
 .flow-dst { background: #b71c1c; color: #ef9a9a; }
-.flow-arrow { color: #555; }
+.flow-arrow { color: #555; flex-shrink: 0; }
 .flow-level { color: #ffeb3b; font-weight: bold; }
 
 /* AGC display */
