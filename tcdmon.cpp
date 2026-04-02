@@ -153,9 +153,10 @@ struct ModuleData
 
 struct DeviceData
 {
-	std::string serial, type;
+	std::string serial, type, role;
 	int buf_depth, errors;
 	bool online;
+	std::vector<std::string> ch_modules;  // active module per channel
 };
 
 static volatile sig_atomic_t g_resize = 0;
@@ -502,16 +503,37 @@ int main(int argc, char *argv[])
 		{
 			std::string serial = json_str(dj, "serial");
 			std::string type = json_str(dj, "type");
+			std::string role = json_str(dj, "role");
 			bool online = json_bool(dj, "online");
 			int bufd = json_int(dj, "buf_depth");
 			int errs = json_int(dj, "errors");
 
-			if (online) attron(COLOR_PAIR(1));
-			else attron(COLOR_PAIR(3));
-			mvprintw(row, 2, "%s", online ? "OK" : "!!");
-			attroff(COLOR_PAIR(1) | COLOR_PAIR(3));
+			// Parse active channels
+			auto ch_arr = json_arr(dj, "channels");
+			auto ch_items = json_arr_items(ch_arr);
+			std::string active_mods;
+			int active_count = 0;
+			for (auto &cj : ch_items)
+			{
+				std::string m = json_str(cj, "module");
+				if (!m.empty()) { active_count++; if (!active_mods.empty()) active_mods += ","; active_mods += m; }
+			}
+			int total_ch = (type == "DV3003") ? 3 : 1;
 
-			printw("  %s (%s)  buf:%d", serial.c_str(), type.c_str(), bufd);
+			if (online && active_count > 0) attron(COLOR_PAIR(7) | A_BOLD);
+			else if (online) attron(COLOR_PAIR(1));
+			else attron(COLOR_PAIR(3));
+			mvprintw(row, 2, "%s", online ? (active_count > 0 ? ">>" : "OK") : "!!");
+			attroff(COLOR_PAIR(1) | COLOR_PAIR(3) | COLOR_PAIR(7) | A_BOLD);
+
+			printw("  %s (%s) [%s]  slots:%d/%d  buf:%d",
+				serial.c_str(), type.c_str(), role.c_str(), active_count, total_ch, bufd);
+			if (!active_mods.empty())
+			{
+				attron(COLOR_PAIR(7));
+				printw("  %s", active_mods.c_str());
+				attroff(COLOR_PAIR(7));
+			}
 			if (errs > 0) { attron(COLOR_PAIR(3)); printw("  err:%d", errs); attroff(COLOR_PAIR(3)); }
 			row++;
 		}
@@ -528,6 +550,12 @@ int main(int argc, char *argv[])
 				json_num(cfg_json, "agc_release"),
 				json_num(cfg_json, "agc_maxgain_up"), json_num(cfg_json, "agc_maxgain_down"));
 		}
+		attroff(COLOR_PAIR(5));
+		row++;
+		attron(COLOR_PAIR(5));
+		mvprintw(row, 0, "Output: DStar:%+.0f  DMR/YSF:%+.0f  USRP:%+.0f",
+			json_num(cfg_json, "outgain_dstar"), json_num(cfg_json, "outgain_dmr"),
+			json_num(cfg_json, "outgain_usrp"));
 		attroff(COLOR_PAIR(5));
 
 		row++;

@@ -41,6 +41,7 @@ public:
 	std::string GetProductID() { return productid; }
 	unsigned int GetBufferDepth() const { return buffer_depth.load(std::memory_order_relaxed); }
 	void SetOutputGain(int32_t num) { m_outputGainNum.store(num, std::memory_order_relaxed); }
+	void SetStatsIndex(int idx) { m_statsIndex = idx; }
 
 	// Virtual hooks for mixed-mode support
 	virtual Encoding GetChannelEncoding(uint8_t channel) const { return type; }
@@ -59,6 +60,7 @@ protected:
 	std::future<void> feedFuture, readFuture;
 	std::string description, productid;
 	std::atomic<int32_t> m_outputGainNum{256};
+	int m_statsIndex = -1;
 
 	bool ConfigureVocoder(uint8_t pkt_ch, Encoding type, int8_t in_gain, int8_t out_gain);
 	bool checkResponse(SDV_Packet &responsePacket, uint8_t response) const;

@@ -478,8 +478,8 @@ bool CController::InitVocoders()
 		if (!dv3000_dev.first.empty()) reg(dv3000_dev.first, dv3000_dev.second);
 		if (!dv3003_dev.first.empty()) reg(dv3003_dev.first, dv3003_dev.second);
 		// Set roles based on device assignment
-		if (di >= 1) g_Stats.devices[0].role = mixed_mode ? "dstar" : (dmrsf_device ? "dstar" : "dstar");
-		if (di >= 2) g_Stats.devices[1].role = mixed_mode ? "mixed" : "dmr";
+		if (di >= 1) { g_Stats.devices[0].role = "dstar"; dstar_device->SetStatsIndex(0); }
+		if (di >= 2) { g_Stats.devices[1].role = mixed_mode ? "mixed" : "dmr"; dmrsf_device->SetStatsIndex(1); }
 		g_Stats.num_devices = di;
 	}
 
@@ -528,14 +528,25 @@ void CController::ReadReflectorThread()
 				}
 			}
 
-			// Sync DVSI device stats (buf_depth, active)
+			// Sync DVSI device stats (buf_depth, active channels)
 			{
+				auto now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::steady_clock::now().time_since_epoch()).count();
+				for (int di = 0; di < g_Stats.num_devices; di++)
+				{
+					auto &ds = g_Stats.devices[di];
+					// Reset stale channels (2s timeout)
+					for (int ch = 0; ch < DeviceStats::MAX_CHANNELS; ch++)
+					{
+						uint64_t last = ds.ch_last_ms[ch].load(std::memory_order_relaxed);
+						if (last > 0 && (now_ms - last) > 2000)
+							ds.ch_module[ch].store(' ', std::memory_order_relaxed);
+					}
+				}
 				int di = 0;
 				auto syncDev = [&](CDVDevice *dev) {
 					if (!dev || di >= CTcdStats::MAX_DEVICES) return;
-					unsigned bd = dev->GetBufferDepth();
-					g_Stats.devices[di].buf_depth.store(bd, std::memory_order_relaxed);
-					g_Stats.devices[di].active.store(bd > 0, std::memory_order_relaxed);
+					g_Stats.devices[di].buf_depth.store(dev->GetBufferDepth(), std::memory_order_relaxed);
 					di++;
 				};
 				syncDev(dstar_device.get());

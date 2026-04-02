@@ -41,14 +41,16 @@ struct ModuleStats
 
 struct DeviceStats
 {
+	static constexpr int MAX_CHANNELS = 3;
 	std::string serial;
 	std::string type;       // "DV3000" or "DV3003"
 	std::string role;       // "dstar", "dmr", "mixed"
 	std::atomic<unsigned int> buf_depth{0};
 	std::atomic<uint32_t> errors{0};
 	std::atomic<bool> online{false};
-	std::atomic<bool> active{false};            // currently processing audio
-	std::atomic<uint64_t> last_packet_ms{0};    // timestamp of last packet
+	// Per-channel activity: module letter + timestamp (ms since epoch)
+	std::atomic<char> ch_module[MAX_CHANNELS] = {' ', ' ', ' '};
+	std::atomic<uint64_t> ch_last_ms[MAX_CHANNELS] = {0, 0, 0};
 };
 
 struct ReflectorStats

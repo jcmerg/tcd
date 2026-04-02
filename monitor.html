@@ -250,12 +250,19 @@ function render() {
   // Devices
   let dhtml = '';
   for (const d of data.devices) {
-    const dotClass = !d.online ? 'offline' : d.active ? 'active' : 'online';
+    const activeChs = d.channels ? d.channels.filter(c => c.module).length : 0;
+    const totalChs = d.type === 'DV3003' ? 3 : 1;
+    const dotClass = !d.online ? 'offline' : activeChs > 0 ? 'active' : 'online';
+    let chInfo = '';
+    if (d.channels) {
+      const mods = d.channels.filter(c => c.module).map(c => c.module);
+      if (mods.length > 0) chInfo = ` <span style="color:#2196f3">${mods.join(',')}</span>`;
+    }
     dhtml += `<div class="device">
       <div class="device-dot ${dotClass}"></div>
       <strong>${d.serial}</strong>
       <span class="device-info">${d.type} [${d.role || '?'}]</span>
-      <span class="device-buf">buf: ${d.buf_depth}</span>
+      <span class="device-buf">slots: ${activeChs}/${totalChs} buf: ${d.buf_depth}</span>${chInfo}
       ${d.errors > 0 ? `<span style="color:#f44336">err: ${d.errors}</span>` : ''}
     </div>`;
   }

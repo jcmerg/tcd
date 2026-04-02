@@ -111,8 +111,15 @@ std::string CMonitorServer::BuildStatsJson()
 		   << ",\"buf_depth\":" << d.buf_depth.load(std::memory_order_relaxed)
 		   << ",\"errors\":" << d.errors.load(std::memory_order_relaxed)
 		   << ",\"online\":" << (d.online.load(std::memory_order_relaxed) ? "true" : "false")
-		   << ",\"active\":" << (d.active.load(std::memory_order_relaxed) ? "true" : "false")
-		   << "}";
+		   << ",\"channels\":[";
+		for (int ch = 0; ch < DeviceStats::MAX_CHANNELS; ch++)
+		{
+			char mod = d.ch_module[ch].load(std::memory_order_relaxed);
+			if (ch > 0) js << ",";
+			js << "{\"module\":\"" << (mod != ' ' ? std::string(1, mod) : "") << "\"}";
+		}
+		js << "]}";
+
 	}
 	js << "],\"reflector\":{"
 	   << "\"connected\":" << (g_Stats.reflector.connected.load(std::memory_order_relaxed) ? "true" : "false")

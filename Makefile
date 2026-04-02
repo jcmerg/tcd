@@ -14,7 +14,7 @@ else
 CFLAGS = -W -Werror -Icodec2 -MMD -MD -std=c++17
 endif
 
-LDFLAGS = -lftd2xx -limbe_vocoder -pthread -lmd380_vocoder
+LDFLAGS = -lftd2xx -limbe_vocoder -pthread -lmd380_vocoder -latomic
 
 # Explicit source list (includes urfd shared files)
 SRCS = Configure.cpp Controller.cpp DV3000.cpp DV3003.cpp DVSIDevice.cpp \

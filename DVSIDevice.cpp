@@ -35,6 +35,7 @@
 
 #include "DVSIDevice.h"
 #include "Configure.h"
+#include "TcdStats.h"
 
 extern CConfigure g_Conf;
 
@@ -655,6 +656,17 @@ void CDVDevice::FeedDevice()
 				else
 				{
 					PushWaitingPacket(index, packet);
+
+					// Track channel activity in stats
+					if (m_statsIndex >= 0 && m_statsIndex < CTcdStats::MAX_DEVICES
+						&& index < DeviceStats::MAX_CHANNELS)
+					{
+						auto &ds = g_Stats.devices[m_statsIndex];
+						ds.ch_module[index].store(packet->GetModule(), std::memory_order_relaxed);
+						auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+							std::chrono::steady_clock::now().time_since_epoch()).count();
+						ds.ch_last_ms[index].store(now, std::memory_order_relaxed);
+					}
 
 					Encoding ch_enc = GetChannelEncoding(index);
 					const bool needs_audio = (Encoding::dstar==ch_enc) ? packet->DStarIsSet() : packet->DMRIsSet();
