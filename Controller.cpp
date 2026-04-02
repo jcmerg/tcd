@@ -1270,15 +1270,26 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 				// Save current stream's state
 				if (md380_enc_streamid != 0)
 				{
-					auto &save = md380_state_cache[md380_enc_streamid];
-					save.resize(MD380_RAM_SIZE);
-					memcpy(save.data(), (void*)MD380_RAM, MD380_RAM_SIZE);
+					auto &entry = md380_state_cache[md380_enc_streamid];
+					entry.state.resize(MD380_RAM_SIZE);
+					memcpy(entry.state.data(), (void*)MD380_RAM, MD380_RAM_SIZE);
+					entry.last_used = std::chrono::steady_clock::now();
 				}
 				// Restore target stream's state (or init fresh)
 				auto it = md380_state_cache.find(sid);
 				if (it != md380_state_cache.end())
-					memcpy((void*)MD380_RAM, it->second.data(), MD380_RAM_SIZE);
+					memcpy((void*)MD380_RAM, it->second.state.data(), MD380_RAM_SIZE);
 				md380_enc_streamid = sid;
+
+				// Purge stale cache entries (>30s)
+				auto cutoff = std::chrono::steady_clock::now() - std::chrono::seconds(30);
+				for (auto ci = md380_state_cache.begin(); ci != md380_state_cache.end(); )
+				{
+					if (ci->first != sid && ci->first != md380_enc_streamid && ci->second.last_used < cutoff)
+						ci = md380_state_cache.erase(ci);
+					else
+						++ci;
+				}
 			}
 			int16_t tmp[160];
 			memcpy(tmp, pcm, sizeof(tmp));

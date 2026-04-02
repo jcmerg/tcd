@@ -66,7 +66,8 @@ protected:
 	std::mutex p25vocoder_mux;
 	std::mutex md380_mux;
 	uint16_t md380_enc_streamid = 0;
-	std::unordered_map<uint16_t, std::vector<uint8_t>> md380_state_cache;
+	struct Md380CacheEntry { std::vector<uint8_t> state; std::chrono::steady_clock::time_point last_used; };
+	std::unordered_map<uint16_t, Md380CacheEntry> md380_state_cache;
 	int32_t ambe_in_num, ambe_out_num, usrp_rx_num, usrp_tx_num, dmr_reencode_num;
 	int32_t outgain_dstar_num, outgain_dmr_num, outgain_usrp_num, outgain_imbe_num;
 	imbe_vocoder p25vocoder;
