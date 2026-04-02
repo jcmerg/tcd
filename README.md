@@ -220,7 +220,8 @@ Access `http://<tcd-host>:8080` in a browser. Features:
 - **VU meters**: Pre-AGC and post-AGC with peak hold
 - **AGC controls**: Enable/disable, target, attack, release, gain limits (up to 40dB) — changes apply live
 - **Gain sliders**: Grouped into Output Gain (post-AGC) / DVSI Hardware / USRP-SVX / Software Vocoder
-- **Device status**: DVSI serial, type, role (dstar/dmr/mixed), vocoder slots used/total, active module letters, buffer depth
+- **DVSI device status**: Serial, type, role (dstar/dmr/mixed), vocoder slots used/total, active module letters, buffer depth
+- **md380 software vocoder**: Re-encode on/off, cached streams, encode/decode/re-encode counters, active module
 - **Reflector status**: Connected/disconnected, packet counters
 - **Save to INI**: Persist current settings to tcd.ini
 
@@ -233,7 +234,7 @@ tcdmon                      # connect to localhost:8081
 tcdmon 172.16.20.20 8081    # connect to remote host
 ```
 
-Shows VU bars, signal flow, AGC state, device status with slot usage and active modules, output gain summary. Press `q` to quit.
+Shows VU bars, signal flow, AGC state, DVSI device slots with active modules, md380 vocoder status with counters, output gain summary. Press `q` to quit.
 
 ### Stats CSV Logging
 
@@ -279,8 +280,8 @@ sudo journalctl -u tcd -f          # follow logs
 - **md380 stream isolation**: Save/restore encoder state per stream, mutex around all md380 calls
 
 ### Monitoring & Configuration
-- **Web dashboard**: Embedded mongoose HTTP+WS with signal flow, VU meters, grouped gain sliders (Output/DVSI/USRP/Software), AGC controls, DVSI slot tracking, save-to-INI
-- **ncurses monitor** (`tcdmon`): SSH-friendly terminal UI with device slots, active modules, output gain summary
+- **Web dashboard**: Embedded mongoose HTTP+WS with signal flow, VU meters, grouped gain sliders (Output/DVSI/USRP/Software), AGC controls, DVSI slot tracking, md380 vocoder status, save-to-INI
+- **ncurses monitor** (`tcdmon`): SSH-friendly terminal UI with device slots, md380 counters, active modules, output gain summary
 - **Stats CSV logging**: Per-stream per-codec AGC/level recording with auto-cleanup
 - **Config key renames**: `DmrGainIn/Out` (was DmrYsfGainIn/Out), `UsrpGainIn/Out` (was UsrpRxGain/TxGain), gain ranges extended to ±40 dB
 
