@@ -103,38 +103,43 @@ ServerAddress = 172.16.200.10   # IP of the urfd reflector
 Modules = FS                    # must match urfd.ini [Transcoder] section
 
 # Whitelist AMBE devices by serial (use 'tcd --list-devices' to find them)
-# For mixed mode, list both serials. Order does not matter.
 DeviceSerial = DQ015SBR
 DeviceSerial = DKB7FXGE
 
-# Static gain values in dB (-24 to +24)
-# With AGC enabled, all gains should be 0.
+# Output Gain — post-AGC, per target codec, in dB (-40 to +40)
+OutputGainDStar = 0             # D-Star + Codec2/M17 output
+OutputGainDMR   = -16           # DMR/YSF + IMBE/P25 output
+OutputGainUSRP  = 0             # USRP output
+
+# DVSI Hardware Gains in dB (-40 to +40) — inside the DVSI chip
 DStarGainIn     = 0
 DStarGainOut    = 0
-DmrYsfGainIn    = 0
-DmrYsfGainOut   = 0
-UsrpTxGain      = 0
-UsrpRxGain      = 0
-DmrReencodeGain = -10           # reduce loud DMR/YSF output (0 = disable re-encode)
+DmrGainIn       = 0
+DmrGainOut      = 0
+
+# USRP/SVX PCM gains in dB (-40 to +40)
+UsrpGainIn      = 0
+UsrpGainOut     = 0
+DmrReencodeGain = 0             # legacy, use OutputGainDMR instead
 
 # AGC (Automatic Gain Control)
 AGC             = true
 AGCTarget       = -16
 AGCAttack       = 50
 AGCRelease      = 500
-AGCMaxGainUp    = 20        # max amplification in dB
-AGCMaxGainDown  = 24        # max attenuation in dB
-AGCNoiseGate    = -55       # noise gate threshold in dBFS
+AGCMaxGainUp    = 30
+AGCMaxGainDown  = 24
+AGCNoiseGate    = -55
 
 # Web Dashboard & Monitoring
 Monitor          = true
-MonitorHttpPort  = 8080     # web dashboard
-MonitorStatsPort = 8081     # plain TCP stats socket (for tcdmon)
+MonitorHttpPort  = 8080
+MonitorStatsPort = 8081
 
-# Stats CSV Logging (per-stream AGC analysis)
-StatsLog       = true
+# Stats CSV Logging (enable for tuning, disable in normal operation)
+StatsLog       = false
 StatsLogDir    = /tmp/tcd-stats
-StatsLogRetain = 24         # hours before auto-cleanup
+StatsLogRetain = 24
 ```
 
 ### Audio gain
@@ -142,33 +147,35 @@ StatsLogRetain = 24         # hours before auto-cleanup
 All transcoding passes through PCM as intermediate format:
 
 ```
-Source Codec --[GainIn]--> PCM --[AGC]--> normalized PCM --[GainOut]--> Target Codec
+Source Codec --[DVSI GainIn]--> PCM --[AGC]--> normalized PCM --[OutputGain]--> Target Codec
 ```
 
-DMR input is always re-encoded from AGC-normalized PCM via the md380 software vocoder, ensuring correct audio levels on DMR/YSF output regardless of input source volume.
+#### Output Gain (post-AGC)
 
-#### Static gain
+Applied after AGC, independently per target codec. Use to balance level differences (e.g. DMR/YSF output is often too loud relative to D-Star).
 
-Gain values (in dB, range -24 to +24) are applied at decode and encode stages:
+| Parameter | Default | Applied to |
+|-----------|---------|------------|
+| `OutputGainDStar` | `0` | D-Star DVSI encode, Codec2/M17 |
+| `OutputGainDMR` | `0` | DMR/YSF DVSI encode, md380 sw encode, IMBE/P25 |
+| `OutputGainUSRP` | `0` | USRP output |
 
-| Parameter | Stage | Direction | Description |
-|-----------|-------|-----------|-------------|
-| `DStarGainIn` | Decode | D-Star AMBE → PCM | Boost quiet D-Star audio to normal PCM level |
-| `DStarGainOut` | Encode | PCM → D-Star AMBE | Reduce PCM back to D-Star level |
-| `DmrYsfGainIn` | Decode | DMR/YSF AMBE2+ → PCM | Attenuate hot DMR/YSF audio |
-| `DmrYsfGainOut` | Encode | PCM → DMR/YSF AMBE2+ | Attenuate PCM for DMR/YSF encoding |
-| `UsrpRxGain` | Receive | PCM from USRP → internal PCM | Attenuate incoming USRP audio |
-| `UsrpTxGain` | Transmit | Internal PCM → USRP | Adjust PCM level sent to USRP |
+Gains are applied on local copies in each encode function and in the DVSI FeedDevice thread — the shared PCM buffer is never modified.
 
-**Note**: SvxReflector audio uses a separate codec path (`ECodecType::svx`) and is **not** affected by UsrpRxGain/UsrpTxGain. SVX gain is configured in urfd.ini (see urfd documentation).
+#### DVSI Hardware Gain
 
-#### DMR Re-encode Gain
+Gain values (in dB, range -40 to +40) applied inside the DVSI chip:
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `DmrReencodeGain` | `0` | Gain in dB applied before md380 DMR re-encode. Use negative values (e.g. `-10`) to reduce loud DMR/YSF output. Set to `0` to disable re-encode (passthrough, saves CPU). |
+| Parameter | Direction | Description |
+|-----------|-----------|-------------|
+| `DStarGainIn` | D-Star AMBE → PCM | Boost quiet D-Star audio |
+| `DStarGainOut` | PCM → D-Star AMBE | Reduce PCM for D-Star encoding |
+| `DmrGainIn` | DMR AMBE2+ → PCM | Attenuate hot DMR audio |
+| `DmrGainOut` | PCM → DMR AMBE2+ | Attenuate PCM for DMR encoding |
+| `UsrpGainIn` | PCM from USRP → internal | Adjust incoming USRP audio |
+| `UsrpGainOut` | Internal → USRP | Adjust outgoing USRP audio |
 
-When set to a non-zero value, DMR input is re-encoded from AGC-normalized PCM via the md380 software vocoder. This ensures DMR/YSF output has consistent levels instead of passing through the original (often hot) DMR data. Recommended: `-10` for typical setups.
+**Note**: SVX gain is configured in urfd.ini (`RxGain`/`TxGain`), not in tcd.
 
 #### AGC (Automatic Gain Control)
 
@@ -192,7 +199,7 @@ Gain limits are asymmetric by design: attenuation (down) is safe, amplification 
 - **Sliding RMS window** (3 frames / 60ms): smooths consonant/vowel variation, tracks syllable-level energy
 - **Per-stream long-term average gain**: tracks the typical gain needed for each speaker via slow EMA (~2s)
 - **Gate with gain decay**: during silence, gain drifts toward the speaker's average gain (not unity), so the first syllable after a pause starts at the right level
-- **Fast post-gate release**: first 3 frames after gate opening use 3x release speed for quicker recovery
+- **Fast post-gate release**: first 5 frames after gate opening use 5x release speed for quicker recovery
 - **Peak limiter**: hard limit at -0.1 dBFS, never clips
 
 **Without AGC**, the static gain values must compensate for all level differences between codecs and users. Tuning is tedious and every route needs individual attention.
@@ -209,9 +216,9 @@ Access `http://<tcd-host>:8080` in a browser. Features:
 
 - **Signal flow diagram**: Shows the active codec path with live dBFS levels at each stage
 - **VU meters**: Pre-AGC and post-AGC with peak hold
-- **AGC controls**: Enable/disable, target, attack, release, gain limits — changes apply live
-- **Gain sliders**: All codec directions, instant effect without restart
-- **Device status**: DVSI serial, type, buffer depth, online/offline
+- **AGC controls**: Enable/disable, target, attack, release, gain limits (up to 40dB) — changes apply live
+- **Gain sliders**: Grouped into Output Gain (post-AGC) / DVSI Hardware / USRP-SVX / Software Vocoder
+- **Device status**: DVSI serial, type, role (dstar/dmr/mixed), vocoder slots used/total, active module letters, buffer depth
 - **Reflector status**: Connected/disconnected, packet counters
 - **Save to INI**: Persist current settings to tcd.ini
 
@@ -224,7 +231,7 @@ tcdmon                      # connect to localhost:8081
 tcdmon 172.16.20.20 8081    # connect to remote host
 ```
 
-Shows VU bars, signal flow, AGC state, device status. Press `q` to quit.
+Shows VU bars, signal flow, AGC state, device status with slot usage and active modules, output gain summary. Press `q` to quit.
 
 ### Stats CSV Logging
 
@@ -261,9 +268,10 @@ sudo journalctl -u tcd -f          # follow logs
 - **DV3003 D-Star support**: PKT_COMPAND fix, 350-byte flush, per-channel encoding
 - **md380 always linked**: Runtime device detection instead of compile-time flags. DMR re-encode after AGC via `DmrReencodeGain` for correct output levels.
 - **Performance**: FTDI event notification (`FT_SetEventNotification`) instead of busy-poll, condition variables for FeedDevice, cached DV3003 pointer. ~5% CPU on Raspberry Pi 3.
-- **AGC improvements**: Sliding RMS window (60ms), gate-with-decay (gain drifts to unity during silence), fast post-gate release (3x speed for first syllable after pause), asymmetric gain limits (up/down), configurable noise gate with hysteresis, peak limiter, per-stream tracking, live reconfiguration from web dashboard
-- **Web dashboard**: Embedded mongoose HTTP+WebSocket server with signal flow visualization, VU meters, gain sliders, AGC controls, device status, save-to-INI
-- **ncurses monitor**: `tcdmon` standalone SSH-friendly terminal tool
+- **Per-codec output gains**: Independent post-AGC gain for D-Star, DMR/YSF, USRP outputs. Applied in encode functions and DVSI FeedDevice (never modifying shared packet buffer). Replaces the universal `DmrReencodeGain`.
+- **AGC improvements**: Sliding RMS window (60ms), gate-with-decay (gain drifts to speaker avg during silence), fast post-gate release (5x speed for first 5 frames after pause), asymmetric gain limits (up/down, range to 40dB), configurable noise gate with hysteresis, peak limiter, per-stream tracking, live reconfiguration from web dashboard
+- **Web dashboard**: Embedded mongoose HTTP+WebSocket server with signal flow visualization, VU meters, grouped gain sliders (output/DVSI/USRP/software), AGC controls, DVSI device status with vocoder slot tracking, save-to-INI
+- **ncurses monitor**: `tcdmon` standalone SSH-friendly terminal tool with device slots, active modules, output gain summary
 - **Stats CSV logging**: Per-stream AGC/level recording for post-hoc analysis with auto-cleanup
 - **SVX codec path**: Separate `ECodecType::svx` for independent SVX audio handling, routed through all codec stages without touching USRP gain
 - **md380 stream isolation**: Save/restore encoder state per stream and mutex around all md380 calls to prevent cross-stream crosstalk in multi-module setups
