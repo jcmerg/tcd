@@ -301,7 +301,7 @@ static void draw_flow(int y, int x, int width, const ModuleData &m, const std::s
 	if (m.codec_in.find("Star") == std::string::npos) targets += "D-Star ";
 	if (m.codec_in.find("DMR") == std::string::npos) targets += "DMR/YSF ";
 	if (m.codec_in.find("Codec2") == std::string::npos) targets += "M17 ";
-	if (m.codec_in.find("P25") == std::string::npos) targets += "P25 ";
+	if (m.codec_in.find("P25") == std::string::npos) targets += "P25/NXDN ";
 	if (m.codec_in != "USRP") targets += "USRP ";
 	if (m.codec_in != "SVX") targets += "SVX";
 	mvprintw(y, col, "%s", targets.c_str());
