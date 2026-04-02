@@ -108,7 +108,8 @@ DeviceSerial = DKB7FXGE
 
 # Output Gain — post-AGC, per target codec, in dB (-40 to +40)
 OutputGainDStar = 0             # D-Star + Codec2/M17 output
-OutputGainDMR   = -16           # DMR/YSF + IMBE/P25 output
+OutputGainDMR   = -16           # DMR/YSF output
+OutputGainIMBE  = 0             # P25/NXDN output
 OutputGainUSRP  = 0             # USRP output
 
 # DVSI Hardware Gains in dB (-40 to +40) — inside the DVSI chip
@@ -157,7 +158,8 @@ Applied after AGC, independently per target codec. Use to balance level differen
 | Parameter | Default | Applied to |
 |-----------|---------|------------|
 | `OutputGainDStar` | `0` | D-Star DVSI encode, Codec2/M17 |
-| `OutputGainDMR` | `0` | DMR/YSF DVSI encode, md380 sw encode, IMBE/P25 |
+| `OutputGainDMR` | `0` | DMR/YSF DVSI encode, md380 sw encode |
+| `OutputGainIMBE` | `0` | P25/NXDN (IMBE encoder) |
 | `OutputGainUSRP` | `0` | USRP output |
 
 Gains are applied on local copies in each encode function and in the DVSI FeedDevice thread — the shared PCM buffer is never modified.
