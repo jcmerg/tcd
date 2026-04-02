@@ -20,14 +20,14 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
 
 /* VU Meters */
 .vu-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; }
-.vu-label { width: 60px; text-align: right; color: #999; }
-.vu-bar-bg { flex: 1; height: 14px; background: #0a0a1a; border-radius: 3px; position: relative; overflow: hidden; }
+.vu-label { flex: 0 0 60px; text-align: right; color: #999; white-space: nowrap; }
+.vu-bar-bg { flex: 1; height: 14px; background: #0a0a1a; border-radius: 3px; position: relative; overflow: hidden; min-width: 0; }
 .vu-bar { height: 100%; border-radius: 3px; transition: width 0.15s ease-out; min-width: 1px; }
 .vu-bar.green { background: linear-gradient(90deg, #2e7d32, #4caf50); }
 .vu-bar.yellow { background: linear-gradient(90deg, #f9a825, #ffeb3b); }
 .vu-bar.red { background: linear-gradient(90deg, #c62828, #f44336); }
 .vu-peak { position: absolute; top: 0; height: 100%; width: 2px; background: #fff; opacity: 0.7; }
-.vu-val { width: 50px; font-size: 11px; color: #aaa; text-align: right; }
+.vu-val { flex: 0 0 58px; font-size: 11px; color: #aaa; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 /* Signal flow diagram */
 .flow { margin: 8px 0; padding: 8px; background: #0a0a1a; border-radius: 6px; font-size: 12px; }
@@ -42,7 +42,7 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
 .flow-level { color: #ffeb3b; font-weight: bold; }
 
 /* AGC display */
-.agc-info { display: flex; gap: 16px; font-size: 12px; margin: 4px 0; }
+.agc-info { display: flex; gap: 16px; font-size: 12px; margin: 4px 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .agc-item { color: #aaa; }
 .agc-item span { color: #ffcc80; font-weight: bold; }
 .agc-gate { color: #f44336; font-weight: bold; }
