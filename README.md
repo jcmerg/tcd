@@ -4,7 +4,7 @@ Fork of [n7tae/tcd](https://github.com/n7tae/tcd) with bug fixes and usability i
 
 ## Overview
 
-tcd is a hybrid transcoder for the [URF reflector](https://github.com/jcmerg/urfd). It bridges between hardware-based vocoders (DVSI AMBE) and software-based vocoders (Codec2 for M17, IMBE for P25, md380 for DMR/YSF).
+tcd is a hybrid transcoder for the [URF reflector](https://github.com/jcmerg/urfd). It bridges between hardware-based vocoders (DVSI AMBE) and software-based vocoders (Codec2 for M17, IMBE for P25, MD380 for DMR/YSF).
 
 ## Requirements
 
@@ -20,7 +20,7 @@ tcd auto-detects the connected devices and selects the appropriate mode:
 
 ### 1. Mixed Mode: DV3000 + DV3003 (recommended, 2 modules)
 
-Use a DV3000 (1 D-Star channel) together with a DV3003 (1 D-Star + 2 DMR channels) for concurrent 2-module cross-mode transcoding. DMR audio levels are normalized via md380 software re-encode after AGC.
+Use a DV3000 (1 D-Star channel) together with a DV3003 (1 D-Star + 2 DMR channels) for concurrent 2-module cross-mode transcoding. DMR audio levels are normalized via MD380 software re-encode after AGC.
 
 ```ini
 Modules = FS            # 2 modules (first = DV3000 D-Star, second = DV3003 mixed)
@@ -34,9 +34,9 @@ Channel assignment (automatic):
 - **DV3003 ch1**: DMR for first module (F)
 - **DV3003 ch2**: DMR for second module (S)
 
-### 2. Single Device + md380 (1 module)
+### 2. Single Device + MD380 (1 module)
 
-One DVSI device for D-Star, md380 software vocoder for DMR/YSF. Only supports 1 transcoded module. Works on ARM and x86_64.
+One DVSI device for D-Star, MD380 software vocoder for DMR/YSF. Only supports 1 transcoded module. Works on ARM and x86_64.
 
 ```ini
 Modules = S
@@ -121,7 +121,7 @@ DmrGainOut      = 0
 # USRP/SVX PCM gains in dB (-40 to +40)
 UsrpGainIn      = 0
 UsrpGainOut     = 0
-DmrReencodeGain = 0             # additional gain for md380 DMR re-encode only
+DmrReencodeGain = 0             # additional gain for MD380 DMR re-encode only
 
 # AGC (Automatic Gain Control)
 AGC             = true
@@ -158,7 +158,7 @@ Applied after AGC, independently per target codec. Use to balance level differen
 | Parameter | Default | Applied to |
 |-----------|---------|------------|
 | `OutputGainDStar` | `0` | D-Star DVSI encode, Codec2/M17 |
-| `OutputGainDMR` | `0` | DMR/YSF DVSI encode, md380 sw encode |
+| `OutputGainDMR` | `0` | DMR/YSF DVSI encode, MD380 sw encode |
 | `OutputGainIMBE` | `0` | P25/NXDN (IMBE encoder) |
 | `OutputGainUSRP` | `0` | USRP output |
 
@@ -221,7 +221,7 @@ Access `http://<tcd-host>:8080` in a browser. Features:
 - **AGC controls**: Enable/disable, target, attack, release, gain limits (up to 40dB) — changes apply live
 - **Gain sliders**: Grouped into Output Gain (post-AGC) / DVSI Hardware / USRP-SVX / Software Vocoder
 - **DVSI device status**: Serial, type, role (dstar/dmr/mixed), vocoder slots used/total, active module letters, buffer depth
-- **md380 software vocoder**: Re-encode on/off, cached streams, encode/decode/re-encode counters, active module
+- **MD380 software vocoder**: Re-encode on/off, cached streams, encode/decode/re-encode counters, active module
 - **Reflector status**: Connected/disconnected, packet counters
 - **Save to INI**: Persist current settings to tcd.ini
 
@@ -234,7 +234,7 @@ tcdmon                      # connect to localhost:8081
 tcdmon 172.16.20.20 8081    # connect to remote host
 ```
 
-Shows VU bars, signal flow, AGC state, DVSI device slots with active modules, md380 vocoder status with counters, output gain summary. Press `q` to quit.
+Shows VU bars, signal flow, AGC state, DVSI device slots with active modules, MD380 vocoder status with counters, output gain summary. Press `q` to quit.
 
 ### Stats CSV Logging
 
@@ -277,16 +277,16 @@ sudo journalctl -u tcd -f          # follow logs
 - **Per-codec output gains**: Independent post-AGC gains for D-Star, DMR/YSF, P25/NXDN, USRP — applied in encode functions and DVSI FeedDevice (shared buffer never modified)
 - **AGC v3**: Sliding RMS window (60ms), per-stream speaker tracking, gate-with-decay to speaker average, fast post-gate release (5x/5 frames), asymmetric limits (up to 40dB), noise gate with hysteresis, peak limiter, live reconfiguration from dashboard
 - **DMR re-encode**: Always active when AGC or OutputGainDMR is set — ensures DMR→DMR passthrough is also normalized (was bypassing AGC entirely)
-- **md380 stream isolation**: Save/restore encoder state per stream, mutex around all md380 calls
+- **MD380 stream isolation**: Save/restore encoder state per stream, mutex around all MD380 calls
 
 ### Monitoring & Configuration
-- **Web dashboard**: Embedded mongoose HTTP+WS with signal flow, VU meters, grouped gain sliders (Output/DVSI/USRP/Software), AGC controls, DVSI slot tracking, md380 vocoder status, save-to-INI
-- **ncurses monitor** (`tcdmon`): SSH-friendly terminal UI with device slots, md380 counters, active modules, output gain summary
+- **Web dashboard**: Embedded mongoose HTTP+WS with signal flow, VU meters, grouped gain sliders (Output/DVSI/USRP/Software), AGC controls, DVSI slot tracking, MD380 vocoder status, save-to-INI
+- **ncurses monitor** (`tcdmon`): SSH-friendly terminal UI with device slots, MD380 counters, active modules, output gain summary
 - **Stats CSV logging**: Per-stream per-codec AGC/level recording with auto-cleanup
 - **Config key renames**: `DmrGainIn/Out` (was DmrYsfGainIn/Out), `UsrpGainIn/Out` (was UsrpRxGain/TxGain), gain ranges extended to ±40 dB
 
 ### Reliability
-- **md380 always linked**: Runtime device detection instead of compile-time flags
+- **MD380 always linked**: Runtime device detection instead of compile-time flags
 - **Performance**: FTDI event notification instead of busy-poll, condition variables, ~5% CPU on Pi
 - **Thread safety**: Mutex around IMBE vocoder, SIGPIPE ignored for clean reconnection
 - **Error handling**: SendToReflector retry with backoff, graceful queue overflow, ReadDevice timeout recovery
