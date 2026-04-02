@@ -143,6 +143,7 @@ std::string CMonitorServer::BuildStatsJson()
 	   << ",\"outgain_dstar\":" << g_Stats.config.outgain_dstar.load()
 	   << ",\"outgain_dmr\":" << g_Stats.config.outgain_dmr.load()
 	   << ",\"outgain_usrp\":" << g_Stats.config.outgain_usrp.load()
+	   << ",\"outgain_imbe\":" << g_Stats.config.outgain_imbe.load()
 	   << "}}";
 
 	return js.str();
@@ -218,6 +219,7 @@ void CMonitorServer::HandleRest(struct mg_connection *c, struct mg_http_message 
 				else if (strncmp(p, "outgain_dstar", 13) == 0) g_Stats.config.outgain_dstar.store(db);
 				else if (strncmp(p, "outgain_dmr", 11) == 0)   g_Stats.config.outgain_dmr.store(db);
 				else if (strncmp(p, "outgain_usrp", 12) == 0)  g_Stats.config.outgain_usrp.store(db);
+				else if (strncmp(p, "outgain_imbe", 12) == 0)  g_Stats.config.outgain_imbe.store(db);
 			}
 		}
 		mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", "{\"status\":\"ok\"}");
@@ -445,6 +447,7 @@ bool CMonitorServer::SaveConfig(const std::string &ini_path)
 				if (key == "OutputGainDStar")   { out << key << " = " << g_Stats.config.outgain_dstar.load() << "\n"; continue; }
 				if (key == "OutputGainDMR")    { out << key << " = " << g_Stats.config.outgain_dmr.load() << "\n"; continue; }
 				if (key == "OutputGainUSRP")   { out << key << " = " << g_Stats.config.outgain_usrp.load() << "\n"; continue; }
+				if (key == "OutputGainIMBE")   { out << key << " = " << g_Stats.config.outgain_imbe.load() << "\n"; continue; }
 				if (key == "AGC")               { out << key << " = " << (g_Stats.config.agc_enabled.load() ? "true" : "false") << "\n"; continue; }
 				if (key == "AGCTarget")         { out << key << " = " << g_Stats.config.agc_target.load() << "\n"; continue; }
 				if (key == "AGCAttack")         { out << key << " = " << g_Stats.config.agc_attack.load() << "\n"; continue; }

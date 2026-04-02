@@ -23,7 +23,7 @@
 #include <vector>
 #include <regex>
 
-enum class EGainType { dmrin, dmrout, dstarin, dstarout, usrptx, usrprx, dmrreencode, outgain_dstar, outgain_dmr, outgain_usrp };
+enum class EGainType { dmrin, dmrout, dstarin, dstarout, usrptx, usrprx, dmrreencode, outgain_dstar, outgain_dmr, outgain_usrp, outgain_imbe };
 
 #define IS_TRUE(a) ((a)=='t' || (a)=='T' || (a)=='1')
 
@@ -62,7 +62,7 @@ private:
 	std::vector<std::string> device_serials;
 	uint16_t port;
 	int dstar_in, dstar_out, dmr_in, dmr_out, usrp_tx, usrp_rx, dmr_reencode;
-	int outgain_dstar = 0, outgain_dmr = 0, outgain_usrp = 0;
+	int outgain_dstar = 0, outgain_dmr = 0, outgain_usrp = 0, outgain_imbe = 0;
 	bool  agc_enabled = false;
 	float agc_target  = -16.0f;
 	float agc_attack  = 50.0f;

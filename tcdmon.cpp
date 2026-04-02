@@ -553,9 +553,9 @@ int main(int argc, char *argv[])
 		attroff(COLOR_PAIR(5));
 		row++;
 		attron(COLOR_PAIR(5));
-		mvprintw(row, 0, "Output: DStar:%+.0f  DMR/YSF:%+.0f  USRP:%+.0f",
+		mvprintw(row, 0, "Output: DStar:%+.0f  DMR/YSF:%+.0f  P25/NXDN:%+.0f  USRP:%+.0f",
 			json_num(cfg_json, "outgain_dstar"), json_num(cfg_json, "outgain_dmr"),
-			json_num(cfg_json, "outgain_usrp"));
+			json_num(cfg_json, "outgain_imbe"), json_num(cfg_json, "outgain_usrp"));
 		attroff(COLOR_PAIR(5));
 
 		row++;

@@ -91,6 +91,7 @@ public:
 		std::atomic<int>   outgain_dstar{0};
 		std::atomic<int>   outgain_dmr{0};
 		std::atomic<int>   outgain_usrp{0};
+		std::atomic<int>   outgain_imbe{0};
 	} config;
 
 	// Module name list (set at startup)

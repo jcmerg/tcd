@@ -77,6 +77,7 @@ int main(int argc, char *argv[])
 		g_Stats.config.outgain_dstar.store(g_Conf.GetGain(EGainType::outgain_dstar));
 		g_Stats.config.outgain_dmr.store(g_Conf.GetGain(EGainType::outgain_dmr));
 		g_Stats.config.outgain_usrp.store(g_Conf.GetGain(EGainType::outgain_usrp));
+		g_Stats.config.outgain_imbe.store(g_Conf.GetGain(EGainType::outgain_imbe));
 		g_Monitor.Start(g_Conf.GetMonitorHttpPort(), g_Conf.GetMonitorStatsPort());
 	}
 

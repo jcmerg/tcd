@@ -59,7 +59,7 @@ void CController::ApplyGain(int16_t *samples, int count, int32_t num)
 	}
 }
 
-CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256), outgain_dstar_num(256), outgain_dmr_num(256), outgain_usrp_num(256) {}
+CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256), outgain_dstar_num(256), outgain_dmr_num(256), outgain_usrp_num(256), outgain_imbe_num(256) {}
 
 bool CController::Start()
 {
@@ -69,6 +69,7 @@ bool CController::Start()
 	outgain_dstar_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_dstar));
 	outgain_dmr_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_dmr));
 	outgain_usrp_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_usrp));
+	outgain_imbe_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_imbe));
 	m_agc.Configure(g_Conf.GetAGCEnabled(), g_Conf.GetAGCTarget(), g_Conf.GetAGCAttack(), g_Conf.GetAGCRelease(), g_Conf.GetAGCMaxGainUp(), g_Conf.GetAGCMaxGainDown(), g_Conf.GetAGCNoiseGate());
 
 	if (InitVocoders() || tcClient.Open(g_Conf.GetAddress(), g_Conf.GetTCMods(), g_Conf.GetPort()))
@@ -108,6 +109,7 @@ void CController::ReconfigureAGC()
 	outgain_dstar_num = calcNumerator(g_Stats.config.outgain_dstar.load());
 	outgain_dmr_num = calcNumerator(g_Stats.config.outgain_dmr.load());
 	outgain_usrp_num = calcNumerator(g_Stats.config.outgain_usrp.load());
+	outgain_imbe_num = calcNumerator(g_Stats.config.outgain_imbe.load());
 	if (dstar_device) dstar_device->SetOutputGain(outgain_dstar_num);
 	if (dmrsf_device) dmrsf_device->SetOutputGain(outgain_dmr_num);
 }
@@ -751,7 +753,7 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	{
 		int16_t imbe_buf[160];
 		memcpy(imbe_buf, packet->GetAudioSamples(), sizeof(imbe_buf));
-		ApplyGain(imbe_buf, 160, outgain_dmr_num);
+		ApplyGain(imbe_buf, 160, outgain_imbe_num);
 		std::lock_guard<std::mutex> lock(p25vocoder_mux);
 		p25vocoder.encode_4400(imbe_buf, imbe);
 	}
@@ -888,7 +890,7 @@ void CController::AudiotoIMBE(std::shared_ptr<CTranscoderPacket> packet)
 	uint8_t imbe[11];
 	int16_t gained[160];
 	memcpy(gained, packet->GetAudioSamples(), sizeof(gained));
-	ApplyGain(gained, 160, outgain_dmr_num);
+	ApplyGain(gained, 160, outgain_imbe_num);
 
 	{
 		std::lock_guard<std::mutex> lock(p25vocoder_mux);

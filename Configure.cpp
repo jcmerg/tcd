@@ -35,6 +35,7 @@
 #define OUTGAIN_DSTAR  "OutputGainDStar"
 #define OUTGAIN_DMR    "OutputGainDMR"
 #define OUTGAIN_USRP   "OutputGainUSRP"
+#define OUTGAIN_IMBE   "OutputGainIMBE"
 #define MODULES        "Modules"
 #define SERVERADDRESS  "ServerAddress"
 #define PORT           "Port"
@@ -156,6 +157,8 @@ bool CConfigure::ReadData(const std::string &path)
 			outgain_dmr = getSigned(key, value);
 		else if (0 == key.compare(OUTGAIN_USRP))
 			outgain_usrp = getSigned(key, value);
+		else if (0 == key.compare(OUTGAIN_IMBE))
+			outgain_imbe = getSigned(key, value);
 		else if (0 == key.compare(DEVICESERIAL))
 			device_serials.push_back(value);
 		else if (0 == key.compare(AGCENABLE))
@@ -238,6 +241,7 @@ bool CConfigure::ReadData(const std::string &path)
 	if (outgain_dstar != 0) std::cout << OUTGAIN_DSTAR << " = " << outgain_dstar << std::endl;
 	if (outgain_dmr != 0)   std::cout << OUTGAIN_DMR << " = " << outgain_dmr << std::endl;
 	if (outgain_usrp != 0)  std::cout << OUTGAIN_USRP << " = " << outgain_usrp << std::endl;
+	if (outgain_imbe != 0)  std::cout << OUTGAIN_IMBE << " = " << outgain_imbe << std::endl;
 	if (agc_enabled)
 		std::cout << "AGC = enabled, Target=" << agc_target << "dBFS, Attack=" << agc_attack << "ms, Release=" << agc_release << "ms, Up=+" << agc_maxgain_up << "dB, Down=-" << agc_maxgain_down << "dB" << std::endl;
 	else
@@ -283,6 +287,7 @@ int CConfigure::GetGain(EGainType gt) const
 		case EGainType::outgain_dstar: return outgain_dstar;
 		case EGainType::outgain_dmr:   return outgain_dmr;
 		case EGainType::outgain_usrp:  return outgain_usrp;
+		case EGainType::outgain_imbe:  return outgain_imbe;
 		default:                       return 0;
 	}
 }
