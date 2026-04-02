@@ -35,8 +35,8 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
 .flow-node { padding: 2px 6px; border-radius: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .flow-src { background: #1b5e20; color: #a5d6a7; }
 .flow-gain { background: #4a148c; color: #ce93d8; }
-.flow-agc { background: #e65100; color: #ffcc80; min-width: 120px; }
-.flow-pcm { background: #01579b; color: #81d4fa; min-width: 80px; }
+.flow-agc { background: #e65100; color: #ffcc80; display: inline-block; width: 135px; }
+.flow-pcm { background: #01579b; color: #81d4fa; display: inline-block; width: 90px; }
 .flow-dst { background: #b71c1c; color: #ef9a9a; }
 .flow-arrow { color: #555; }
 .flow-level { color: #ffeb3b; font-weight: bold; }
@@ -184,8 +184,8 @@ function flowDiagram(mod, m, cfg) {
   const cl = codec.toLowerCase();
 
   const ri = m.rms_in, ro = m.rms_out;
-  const riStr = ri > -99 ? ri.toFixed(0) + 'dB' : '-inf';
-  const roStr = ro > -99 ? ro.toFixed(0) + 'dB' : '-inf';
+  const riStr = ri > -99 ? (ri.toFixed(0) + 'dB').padStart(6) : '  -inf';
+  const roStr = ro > -99 ? (ro.toFixed(0) + 'dB').padStart(6) : '  -inf';
 
   // Determine gain for this codec direction
   let gainIn = 0, gainLabel = '';
@@ -196,8 +196,9 @@ function flowDiagram(mod, m, cfg) {
   else if (cl.includes('p25')) { gainLabel = codec; }
   else if (cl.includes('codec2')) { gainLabel = codec; }
 
-  const agcStr = cfg.agc_enabled ? `AGC ${m.agc_gain > 0 ? '+' : ''}${m.agc_gain.toFixed(1)}dB` : 'no AGC';
-  const gateStr = m.agc_gate ? ' <span class="agc-gate">GATE</span>' : '';
+  const agcVal = (m.agc_gain >= 0 ? '+' : '') + m.agc_gain.toFixed(1);
+  const agcStr = cfg.agc_enabled ? `AGC ${agcVal.padStart(6)}dB` : 'no AGC';
+  const gateStr = m.agc_gate ? ' GATE' : '';
 
   // Build output targets
   let targets = [];
