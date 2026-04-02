@@ -121,7 +121,7 @@ DmrGainOut      = 0
 # USRP/SVX PCM gains in dB (-40 to +40)
 UsrpGainIn      = 0
 UsrpGainOut     = 0
-DmrReencodeGain = 0             # legacy, use OutputGainDMR instead
+DmrReencodeGain = 0             # additional gain for md380 DMR re-encode only
 
 # AGC (Automatic Gain Control)
 AGC             = true
