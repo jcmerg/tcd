@@ -40,6 +40,7 @@ public:
 	void AddPacket(const std::shared_ptr<CTranscoderPacket> packet);
 	std::string GetProductID() { return productid; }
 	unsigned int GetBufferDepth() const { return buffer_depth.load(std::memory_order_relaxed); }
+	void SetOutputGain(int32_t num) { m_outputGainNum.store(num, std::memory_order_relaxed); }
 
 	// Virtual hooks for mixed-mode support
 	virtual Encoding GetChannelEncoding(uint8_t channel) const { return type; }
@@ -57,6 +58,7 @@ protected:
 	CPacketQueue input_queue;
 	std::future<void> feedFuture, readFuture;
 	std::string description, productid;
+	std::atomic<int32_t> m_outputGainNum{256};
 
 	bool ConfigureVocoder(uint8_t pkt_ch, Encoding type, int8_t in_gain, int8_t out_gain);
 	bool checkResponse(SDV_Packet &responsePacket, uint8_t response) const;

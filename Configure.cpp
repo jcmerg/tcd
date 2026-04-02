@@ -32,7 +32,9 @@
 #define DSTARGAININ    "DStarGainIn"
 #define DSTARGAINOUT   "DStarGainOut"
 #define DMRREENCODE    "DmrReencodeGain"
-#define OUTPUTGAIN     "OutputGain"
+#define OUTGAIN_DSTAR  "OutputGainDStar"
+#define OUTGAIN_DMR    "OutputGainDMR"
+#define OUTGAIN_USRP   "OutputGainUSRP"
 #define MODULES        "Modules"
 #define SERVERADDRESS  "ServerAddress"
 #define PORT           "Port"
@@ -148,8 +150,12 @@ bool CConfigure::ReadData(const std::string &path)
 			usrp_rx = getSigned(key, value);
 		else if (0 == key.compare(DMRREENCODE))
 			dmr_reencode = getSigned(key, value);
-		else if (0 == key.compare(OUTPUTGAIN))
-			output_gain = getSigned(key, value);
+		else if (0 == key.compare(OUTGAIN_DSTAR))
+			outgain_dstar = getSigned(key, value);
+		else if (0 == key.compare(OUTGAIN_DMR))
+			outgain_dmr = getSigned(key, value);
+		else if (0 == key.compare(OUTGAIN_USRP))
+			outgain_usrp = getSigned(key, value);
 		else if (0 == key.compare(DEVICESERIAL))
 			device_serials.push_back(value);
 		else if (0 == key.compare(AGCENABLE))
@@ -229,8 +235,9 @@ bool CConfigure::ReadData(const std::string &path)
 	std::cout << USRPRXGAIN << " = " << usrp_rx << std::endl;
 	if (dmr_reencode != 0)
 		std::cout << DMRREENCODE << " = " << dmr_reencode << std::endl;
-	if (output_gain != 0)
-		std::cout << OUTPUTGAIN << " = " << output_gain << std::endl;
+	if (outgain_dstar != 0) std::cout << OUTGAIN_DSTAR << " = " << outgain_dstar << std::endl;
+	if (outgain_dmr != 0)   std::cout << OUTGAIN_DMR << " = " << outgain_dmr << std::endl;
+	if (outgain_usrp != 0)  std::cout << OUTGAIN_USRP << " = " << outgain_usrp << std::endl;
 	if (agc_enabled)
 		std::cout << "AGC = enabled, Target=" << agc_target << "dBFS, Attack=" << agc_attack << "ms, Release=" << agc_release << "ms, Up=+" << agc_maxgain_up << "dB, Down=-" << agc_maxgain_down << "dB" << std::endl;
 	else
@@ -272,8 +279,10 @@ int CConfigure::GetGain(EGainType gt) const
 		case EGainType::dstarout: return dstar_out;
 		case EGainType::usrptx:   return usrp_tx;
 		case EGainType::usrprx:      return usrp_rx;
-		case EGainType::dmrreencode: return dmr_reencode;
-		case EGainType::output:      return output_gain;
-		default:                     return 0;
+		case EGainType::dmrreencode:  return dmr_reencode;
+		case EGainType::outgain_dstar: return outgain_dstar;
+		case EGainType::outgain_dmr:   return outgain_dmr;
+		case EGainType::outgain_usrp:  return outgain_usrp;
+		default:                       return 0;
 	}
 }

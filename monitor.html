@@ -103,8 +103,10 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
   <h2>Configuration</h2>
   <div class="grid">
     <div>
-      <h2 style="font-size:13px">Master</h2>
-      <div class="config-row"><label>Master Output</label><input type="range" min="-20" max="20" id="g_output"><span class="val" id="v_output">0</span></div>
+      <h2 style="font-size:13px">Output Gain (post-AGC)</h2>
+      <div class="config-row"><label>D-Star Output</label><input type="range" min="-20" max="20" id="og_dstar"><span class="val" id="v_og_dstar">0</span></div>
+      <div class="config-row"><label>DMR/YSF Output</label><input type="range" min="-20" max="20" id="og_dmr"><span class="val" id="v_og_dmr">0</span></div>
+      <div class="config-row"><label>USRP/SVX Output</label><input type="range" min="-20" max="20" id="og_usrp"><span class="val" id="v_og_usrp">0</span></div>
       <h2 style="font-size:13px">DVSI Hardware</h2>
       <div class="config-row"><label>D-Star DVSI In</label><input type="range" min="-40" max="40" id="g_dstar_in"><span class="val" id="v_dstar_in">0</span></div>
       <div class="config-row"><label>D-Star DVSI Out</label><input type="range" min="-40" max="40" id="g_dstar_out"><span class="val" id="v_dstar_out">0</span></div>
@@ -122,8 +124,8 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
       <div class="config-row"><label>Target (dBFS)</label><input type="range" min="-40" max="0" id="agc_target"><span class="val" id="v_agc_target">-16</span></div>
       <div class="config-row"><label>Attack (ms)</label><input type="range" min="5" max="200" id="agc_attack"><span class="val" id="v_agc_attack">50</span></div>
       <div class="config-row"><label>Release (ms)</label><input type="range" min="50" max="2000" id="agc_release"><span class="val" id="v_agc_release">500</span></div>
-      <div class="config-row"><label>Max Gain Up (dB)</label><input type="range" min="1" max="30" id="agc_maxgain_up"><span class="val" id="v_agc_maxgain_up">20</span></div>
-      <div class="config-row"><label>Max Gain Down (dB)</label><input type="range" min="1" max="30" id="agc_maxgain_down"><span class="val" id="v_agc_maxgain_down">24</span></div>
+      <div class="config-row"><label>Max Gain Up (dB)</label><input type="range" min="1" max="40" id="agc_maxgain_up"><span class="val" id="v_agc_maxgain_up">20</span></div>
+      <div class="config-row"><label>Max Gain Down (dB)</label><input type="range" min="1" max="40" id="agc_maxgain_down"><span class="val" id="v_agc_maxgain_down">24</span></div>
     </div>
   </div>
   <div style="margin-top:12px;text-align:right">
@@ -269,12 +271,18 @@ function render() {
 }
 
 // Config sliders
-const gainKeys = ['output','dstar_in','dstar_out','dmr_in','dmr_out','usrp_rx','usrp_tx','dmr_reencode'];
+const gainKeys = ['dstar_in','dstar_out','dmr_in','dmr_out','usrp_rx','usrp_tx','dmr_reencode'];
+const outgainKeys = ['outgain_dstar','outgain_dmr','outgain_usrp'];
 
 function loadConfig(cfg) {
   gainKeys.forEach(k => {
     const el = document.getElementById('g_' + k);
     if (el) { el.value = cfg['gain_' + k]; document.getElementById('v_' + k).textContent = cfg['gain_' + k]; }
+  });
+  outgainKeys.forEach(k => {
+    const short_k = k.replace('outgain_','');
+    const el = document.getElementById('og_' + short_k);
+    if (el && cfg[k] !== undefined) { el.value = cfg[k]; document.getElementById('v_og_' + short_k).textContent = cfg[k]; }
   });
   document.getElementById('agc_en').checked = cfg.agc_enabled;
   document.getElementById('agc_target').value = cfg.agc_target;
@@ -295,6 +303,17 @@ gainKeys.forEach(k => {
   if (!el) return;
   el.addEventListener('input', () => {
     document.getElementById('v_' + k).textContent = el.value;
+    fetch('/api/gain', { method: 'POST', body: JSON.stringify({ type: k, db: parseInt(el.value) }) });
+  });
+});
+
+// Send output gain changes
+outgainKeys.forEach(k => {
+  const short_k = k.replace('outgain_','');
+  const el = document.getElementById('og_' + short_k);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    document.getElementById('v_og_' + short_k).textContent = el.value;
     fetch('/api/gain', { method: 'POST', body: JSON.stringify({ type: k, db: parseInt(el.value) }) });
   });
 });

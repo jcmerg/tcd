@@ -665,7 +665,21 @@ void CDVDevice::FeedDevice()
 					}
 					else
 					{
-						SendAudio(index, packet->GetAudioSamples());
+						int32_t gn = m_outputGainNum.load(std::memory_order_relaxed);
+						if (gn != 256)
+						{
+							int16_t buf[160];
+							const int16_t *src = packet->GetAudioSamples();
+							for (int i = 0; i < 160; i++)
+							{
+								int32_t v = ((int32_t)src[i] * gn) >> 8;
+								if (v > 32767) v = 32767; else if (v < -32768) v = -32768;
+								buf[i] = (int16_t)v;
+							}
+							SendAudio(index, buf);
+						}
+						else
+							SendAudio(index, packet->GetAudioSamples());
 					}
 					buffer_depth++;
 				}

@@ -45,13 +45,13 @@ int32_t CController::calcNumerator(int32_t db) const
 	return int32_t(roundf(num));
 }
 
-void CController::ApplyOutputGain(int16_t *samples, int count) const
+void CController::ApplyGain(int16_t *samples, int count, int32_t num)
 {
-	if (output_gain_num != 256)
+	if (num != 256)
 	{
 		for (int i = 0; i < count; i++)
 		{
-			int32_t v = ((int32_t)samples[i] * output_gain_num) >> 8;
+			int32_t v = ((int32_t)samples[i] * num) >> 8;
 			if (v > 32767) v = 32767;
 			else if (v < -32768) v = -32768;
 			samples[i] = (int16_t)v;
@@ -59,14 +59,16 @@ void CController::ApplyOutputGain(int16_t *samples, int count) const
 	}
 }
 
-CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256), output_gain_num(256) {}
+CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256), outgain_dstar_num(256), outgain_dmr_num(256), outgain_usrp_num(256) {}
 
 bool CController::Start()
 {
 	usrp_rx_num = calcNumerator(g_Conf.GetGain(EGainType::usrprx));
 	usrp_tx_num = calcNumerator(g_Conf.GetGain(EGainType::usrptx));
 	dmr_reencode_num = calcNumerator(g_Conf.GetGain(EGainType::dmrreencode));
-	output_gain_num = calcNumerator(g_Conf.GetGain(EGainType::output));
+	outgain_dstar_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_dstar));
+	outgain_dmr_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_dmr));
+	outgain_usrp_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_usrp));
 	m_agc.Configure(g_Conf.GetAGCEnabled(), g_Conf.GetAGCTarget(), g_Conf.GetAGCAttack(), g_Conf.GetAGCRelease(), g_Conf.GetAGCMaxGainUp(), g_Conf.GetAGCMaxGainDown(), g_Conf.GetAGCNoiseGate());
 
 	if (InitVocoders() || tcClient.Open(g_Conf.GetAddress(), g_Conf.GetTCMods(), g_Conf.GetPort()))
@@ -74,6 +76,9 @@ bool CController::Start()
 		keep_running = false;
 		return true;
 	}
+	if (dstar_device) dstar_device->SetOutputGain(outgain_dstar_num);
+	if (dmrsf_device) dmrsf_device->SetOutputGain(outgain_dmr_num);
+
 	reflectorFuture = std::async(std::launch::async, &CController::ReadReflectorThread, this);
 	c2Future        = std::async(std::launch::async, &CController::ProcessC2Thread,     this);
 	imbeFuture      = std::async(std::launch::async, &CController::ProcessIMBEThread,   this);
@@ -100,7 +105,11 @@ void CController::ReconfigureAGC()
 	usrp_rx_num = calcNumerator(g_Stats.config.gain_usrp_rx.load());
 	usrp_tx_num = calcNumerator(g_Stats.config.gain_usrp_tx.load());
 	dmr_reencode_num = calcNumerator(g_Stats.config.gain_dmr_reencode.load());
-	output_gain_num = calcNumerator(g_Stats.config.output_gain.load());
+	outgain_dstar_num = calcNumerator(g_Stats.config.outgain_dstar.load());
+	outgain_dmr_num = calcNumerator(g_Stats.config.outgain_dmr.load());
+	outgain_usrp_num = calcNumerator(g_Stats.config.outgain_usrp.load());
+	if (dstar_device) dstar_device->SetOutputGain(outgain_dstar_num);
+	if (dmrsf_device) dmrsf_device->SetOutputGain(outgain_dmr_num);
 }
 
 void CController::Stop()
@@ -608,24 +617,22 @@ void CController::ReadReflectorThread()
 // This might complete the packet. If so, send it back to the reflector
 void CController::AudiotoCodec2(std::shared_ptr<CTranscoderPacket> packet)
 {
-	// the second half is silent in case this is frame is last.
+	int16_t gained[160];
+	memcpy(gained, packet->GetAudioSamples(), sizeof(gained));
+	ApplyGain(gained, 160, outgain_dstar_num);
+
 	uint8_t m17data[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x01, 0x43, 0x09, 0xe4, 0x9c, 0x08, 0x21 };
 	const auto m = packet->GetModule();
 	if (packet->IsSecond())
 	{
-		// get the first half from the store
 		memcpy(m17data, data_store[packet->GetModule()], 8);
-		// and then calculate the second half
-		c2_32[m]->codec2_encode(m17data+8, packet->GetAudioSamples());
+		c2_32[m]->codec2_encode(m17data+8, gained);
 		packet->SetM17Data(m17data);
 	}
-	else /* the packet is first */
+	else
 	{
-		// calculate the first half...
-		c2_32[m]->codec2_encode(m17data, packet->GetAudioSamples());
-		// and then copy the calculated data to the data_store
+		c2_32[m]->codec2_encode(m17data, gained);
 		memcpy(data_store[packet->GetModule()], m17data, 8);
-		// set the m17_is_set flag if this is the last packet
 		packet->SetM17Data(m17data);
 	}
 
@@ -700,26 +707,17 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 			ms.agc_gain_db.load(), ms.agc_gate.load());
 	}
-	{
-		int16_t out[160];
-		memcpy(out, packet->GetAudioSamples(), sizeof(out));
-		ApplyOutputGain(out, 160);
-		packet->SetAudioSamples(out, false);
-	}
-	// the only thing left is to encode the two ambe, so push the packet onto both AMBE queues
+	// D-Star DVSI (gain applied in FeedDevice)
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
-	{
-
 		mixed_dv3003->AddPacketToChannel(packet, 0);
-	}
 	else
 		dstar_device->AddPacket(packet);
 
+	// DMR/YSF DVSI (gain applied in FeedDevice) or sw encode
 	if (dmrsf_device)
 	{
 		if (mixed_mode)
 		{
-			
 			char mod = packet->GetModule();
 			auto it = std::string(g_Conf.GetTCMods()).find(mod);
 			uint8_t dmr_ch = (it == 0) ? 1 : 2;
@@ -730,16 +728,31 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	}
 	else
 	{
+		int16_t dmr_buf[160];
+		memcpy(dmr_buf, packet->GetAudioSamples(), sizeof(dmr_buf));
+		ApplyGain(dmr_buf, 160, outgain_dmr_num);
 		std::lock_guard<std::mutex> lock(md380_mux);
-		md380_encode_fec(ambe2, const_cast<int16_t*>(packet->GetAudioSamples()));
+		md380_encode_fec(ambe2, dmr_buf);
 		packet->SetDMRData(ambe2);
 	}
+
+	// IMBE/P25
 	{
+		int16_t imbe_buf[160];
+		memcpy(imbe_buf, packet->GetAudioSamples(), sizeof(imbe_buf));
+		ApplyGain(imbe_buf, 160, outgain_dmr_num);
 		std::lock_guard<std::mutex> lock(p25vocoder_mux);
-		p25vocoder.encode_4400((int16_t*)packet->GetAudioSamples(), imbe);
+		p25vocoder.encode_4400(imbe_buf, imbe);
 	}
 	packet->SetP25Data(imbe);
-	packet->SetUSRPData((int16_t*)packet->GetAudioSamples());
+
+	// USRP
+	{
+		int16_t usrp_buf[160];
+		memcpy(usrp_buf, packet->GetAudioSamples(), sizeof(usrp_buf));
+		ApplyGain(usrp_buf, 160, outgain_usrp_num);
+		packet->SetUSRPData(usrp_buf);
+	}
 }
 
 void CController::ProcessC2Thread()
@@ -772,7 +785,9 @@ void CController::ProcessC2Thread()
 void CController::AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet)
 {
 	uint8_t ambe2[9];
-	const int16_t *p = packet->GetAudioSamples();
+	int16_t gained[160];
+	memcpy(gained, packet->GetAudioSamples(), sizeof(gained));
+	ApplyGain(gained, 160, outgain_dmr_num);
 
 	{
 		std::lock_guard<std::mutex> lock(md380_mux);
@@ -780,11 +795,11 @@ void CController::AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet)
 		{
 			int16_t tmp[160];
 			for(int i = 0; i < 160; ++i)
-				tmp[i] = int16_t((p[i] * ambe_in_num) >> 8);
+				tmp[i] = int16_t((gained[i] * ambe_in_num) >> 8);
 			md380_encode_fec(ambe2, tmp);
 		}
 		else
-			md380_encode_fec(ambe2, const_cast<int16_t*>(p));
+			md380_encode_fec(ambe2, gained);
 	}
 	packet->SetDMRData(ambe2);
 
@@ -821,9 +836,6 @@ void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 			ms.agc_gain_db.load(), ms.agc_gate.load());
 	}
-	ApplyOutputGain(tmp, 160);
-	packet->SetAudioSamples(tmp, false);
-
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
 
@@ -863,10 +875,13 @@ void CController::ProcessSWAMBE2Thread()
 void CController::AudiotoIMBE(std::shared_ptr<CTranscoderPacket> packet)
 {
 	uint8_t imbe[11];
+	int16_t gained[160];
+	memcpy(gained, packet->GetAudioSamples(), sizeof(gained));
+	ApplyGain(gained, 160, outgain_dmr_num);
 
 	{
 		std::lock_guard<std::mutex> lock(p25vocoder_mux);
-		p25vocoder.encode_4400((int16_t *)packet->GetAudioSamples(), imbe);
+		p25vocoder.encode_4400(gained, imbe);
 	}
 	packet->SetP25Data(imbe);
 	// we might be all done...
@@ -897,8 +912,6 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 			ms.agc_gain_db.load(), ms.agc_gate.load());
 	}
-	ApplyOutputGain(tmp, 160);
-	packet->SetAudioSamples(tmp, false);
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
 
@@ -953,17 +966,16 @@ void CController::ProcessIMBEThread()
 
 void CController::AudiotoUSRP(std::shared_ptr<CTranscoderPacket> packet)
 {
-	const int16_t *p = packet->GetAudioSamples();
+	int16_t tmp[160];
+	memcpy(tmp, packet->GetAudioSamples(), sizeof(tmp));
+	ApplyGain(tmp, 160, outgain_usrp_num);
 
 	if (usrp_tx_num != 256)
 	{
-		int16_t tmp[160];
 		for(int i = 0; i < 160; ++i)
-			tmp[i] = int16_t((p[i] * usrp_tx_num) >> 8);
-		packet->SetUSRPData(tmp);
+			tmp[i] = int16_t((tmp[i] * usrp_tx_num) >> 8);
 	}
-	else
-		packet->SetUSRPData(p);
+	packet->SetUSRPData(tmp);
 
 
 	// we might be all done...
@@ -1001,9 +1013,6 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 			ms.agc_gain_db.load(), ms.agc_gate.load());
 	}
-	ApplyOutputGain(tmp, 160);
-	packet->SetAudioSamples(tmp, false);
-
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
 
@@ -1080,9 +1089,6 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 			ms.agc_gain_db.load(), ms.agc_gate.load());
 	}
-	ApplyOutputGain(tmp, 160);
-	packet->SetAudioSamples(tmp, false);
-
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
 
@@ -1154,12 +1160,7 @@ void CController::RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet)
 				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 				ms.agc_gain_db.load(), ms.agc_gate.load());
 		}
-		{
-			int16_t out[160];
-			memcpy(out, packet->GetAudioSamples(), sizeof(out));
-			ApplyOutputGain(out, 160);
-			packet->SetAudioSamples(out, false);
-		}
+		// Output gains applied in encode functions and DVSI FeedDevice
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
 		usrp_queue.push(packet);
@@ -1210,12 +1211,7 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
 				ms.agc_gain_db.load(), ms.agc_gate.load());
 		}
-		{
-			int16_t out[160];
-			memcpy(out, packet->GetAudioSamples(), sizeof(out));
-			ApplyOutputGain(out, 160);
-			packet->SetAudioSamples(out, false);
-		}
+		// Output gains applied in encode functions and DVSI FeedDevice
 		// Re-encode DMR from AGC'd PCM via md380 software vocoder
 		// Only when DmrReencodeGain is explicitly set (non-zero)
 		// AGC alone does not trigger re-encode to save CPU on low-power devices

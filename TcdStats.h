@@ -86,7 +86,9 @@ public:
 		std::atomic<int>   gain_usrp_rx{0};
 		std::atomic<int>   gain_usrp_tx{0};
 		std::atomic<int>   gain_dmr_reencode{0};
-		std::atomic<int>   output_gain{0};          // post-AGC gain for all codecs (dB)
+		std::atomic<int>   outgain_dstar{0};
+		std::atomic<int>   outgain_dmr{0};
+		std::atomic<int>   outgain_usrp{0};
 	} config;
 
 	// Module name list (set at startup)
