@@ -616,7 +616,9 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 			int16_t tmp[160];
 			memcpy(tmp, audio_store[packet->GetModule()], sizeof(tmp));
 			g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
-			m_agc.Process(tmp, 160, packet->GetStreamId());
+			float agc_db; bool agc_gate;
+			m_agc.Process(tmp, 160, packet->GetStreamId(), agc_db, agc_gate);
+			g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
 			packet->SetAudioSamples(tmp, false);
 		}
 		else /* codec_in is ECodecType::c2_3200 */
@@ -624,7 +626,9 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 			int16_t tmp[160];
 			c2_32[packet->GetModule()]->codec2_decode(tmp, packet->GetM17Data()+8);
 			g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
-			m_agc.Process(tmp, 160, packet->GetStreamId());
+			float agc_db; bool agc_gate;
+			m_agc.Process(tmp, 160, packet->GetStreamId(), agc_db, agc_gate);
+			g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
 			packet->SetAudioSamples(tmp, false);
 		}
 	}
@@ -636,7 +640,9 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 			int16_t tmp[320];
 			c2_16[m]->codec2_decode(tmp, packet->GetM17Data());
 			g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
-			m_agc.Process(tmp, 160, packet->GetStreamId());
+			float agc_db; bool agc_gate;
+			m_agc.Process(tmp, 160, packet->GetStreamId(), agc_db, agc_gate);
+			g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
 			packet->SetAudioSamples(tmp, false);
 			// AGC the second half too before storing
 			m_agc.Process(&tmp[160], 160, packet->GetStreamId());
@@ -647,7 +653,9 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 			int16_t tmp[160];
 			c2_32[m]->codec2_decode(tmp, packet->GetM17Data());
 			g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
-			m_agc.Process(tmp, 160, packet->GetStreamId());
+			float agc_db; bool agc_gate;
+			m_agc.Process(tmp, 160, packet->GetStreamId(), agc_db, agc_gate);
+			g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
 			packet->SetAudioSamples(tmp, false);
 		}
 	}
@@ -834,7 +842,11 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 		p25vocoder.decode_4400(tmp, (uint8_t*)packet->GetP25Data());
 	}
 	g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
-	m_agc.Process(tmp, 160, packet->GetStreamId());
+	{
+		float agc_db; bool agc_gate;
+		m_agc.Process(tmp, 160, packet->GetStreamId(), agc_db, agc_gate);
+		g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
+	}
 	packet->SetAudioSamples(tmp, false);
 	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
 	{
@@ -932,7 +944,11 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 		memcpy(tmp, p, sizeof(tmp));
 	}
 	g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
-	m_agc.Process(tmp, 160, packet->GetStreamId());
+	{
+		float agc_db; bool agc_gate;
+		m_agc.Process(tmp, 160, packet->GetStreamId(), agc_db, agc_gate);
+		g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
+	}
 	packet->SetAudioSamples(tmp, false);
 	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
 	{
@@ -1005,7 +1021,11 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 	memcpy(tmp, p, sizeof(tmp));
 
 	g_Stats.UpdateLevelsIn(packet->GetModule(), tmp, 160);
-	m_agc.Process(tmp, 160, packet->GetStreamId());
+	{
+		float agc_db; bool agc_gate;
+		m_agc.Process(tmp, 160, packet->GetStreamId(), agc_db, agc_gate);
+		g_Stats.UpdateAGC(packet->GetModule(), agc_db, agc_gate);
+	}
 	packet->SetAudioSamples(tmp, false);
 	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
 	{
