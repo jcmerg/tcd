@@ -202,8 +202,8 @@ function flowDiagram(mod, m, cfg) {
   else if (cl.includes('codec2')) { gainLabel = codec; }
 
   const agcVal = (m.agc_gain >= 0 ? '+' : '') + m.agc_gain.toFixed(1);
-  const agcStr = cfg.agc_enabled ? `AGC ${agcVal.padStart(6)}dB` : 'no AGC';
-  const gateStr = m.agc_gate ? ' GATE' : '';
+  const agcStr = cfg.agc_enabled ? (m.agc_gate ? 'AGC GATE' : `AGC ${agcVal.padStart(6)}dB`) : 'no AGC';
+  const gateStr = '';
 
   // Build output targets
   let targets = [];
@@ -245,9 +245,8 @@ function render() {
       ${vuBar('Pre-AGC', m.rms_in, m.peak_in)}
       ${vuBar('Post-AGC', m.rms_out, m.peak_out)}
       <div class="agc-info">
-        <span class="agc-item">AGC Gain: <span>${m.agc_gain > 0 ? '+' : ''}${m.agc_gain.toFixed(1)} dB</span></span>
+        <span class="agc-item">AGC: <span>${data.config.agc_enabled ? (m.agc_gate ? 'Gate' : (m.agc_gain > 0 ? '+' : '') + m.agc_gain.toFixed(1) + ' dB') : 'off'}</span></span>
         <span class="agc-item">Pkts: <span>${m.pkts_in}</span> in / <span>${m.pkts_out}</span> out</span>
-        ${m.agc_gate ? '<span class="agc-gate">NOISE GATE</span>' : ''}
       </div>
     </div>`;
   }
