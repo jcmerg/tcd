@@ -305,6 +305,7 @@ sudo journalctl -u tcd -f          # follow logs
 - **Performance**: FTDI event notification instead of busy-poll, condition variables, ~5% CPU on Pi
 - **Thread safety**: Mutex around IMBE vocoder, SIGPIPE ignored for clean reconnection
 - **Error handling**: SendToReflector retry with backoff, graceful queue overflow, ReadDevice timeout recovery
+- **Reconnect backoff**: Exponential backoff (0.5s → 5s max) when reflector is unreachable, prevents log spam and CPU waste
 - **Usability**: `--list-devices` CLI, `DeviceSerial` config, unified `build.sh`
 
 ## Copyright

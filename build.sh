@@ -72,7 +72,12 @@ if [ ! -f /usr/local/include/ftd2xx.h ]; then
     tar xzf ftdi.tgz
     # Find the extracted directory (varies by version: release/, linux-x86_64/, etc.)
     FTDI_DIR=$(tar tzf ftdi.tgz | head -1 | cut -d/ -f1)
-    cp "$FTDI_DIR"/libftd2xx.* /usr/local/lib/
+    cp "$FTDI_DIR"/libftd2xx.so /usr/local/lib/
+    # Symlink versioned name instead of duplicating the binary
+    FTDI_VER=$(ls "$FTDI_DIR"/libftd2xx.so.* 2>/dev/null | head -1 | xargs basename)
+    if [ -n "$FTDI_VER" ]; then
+        ln -sf libftd2xx.so /usr/local/lib/"$FTDI_VER"
+    fi
     cp "$FTDI_DIR"/ftd2xx.h "$FTDI_DIR"/WinTypes.h /usr/local/include/
     ldconfig
     rm -rf "$FTDI_DIR" ftdi.tgz

@@ -591,6 +591,16 @@ void CController::ReadReflectorThread()
 		std::queue<std::unique_ptr<STCPacket>> queue;
 		// wait up to 100 ms to read something on the unix port
 		tcClient.Receive(queue, 100);
+		// If no module is connected, poll returns instantly (all FDs -1).
+		// Sleep to avoid busy-spinning the loop.
+		if (queue.empty())
+		{
+			bool any_connected = false;
+			for (char m : g_Conf.GetTCMods())
+				if (tcClient.GetFD(m) >= 0) { any_connected = true; break; }
+			if (!any_connected)
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
 		while (! queue.empty())
 		{
 			// create a shared pointer to a new packet
