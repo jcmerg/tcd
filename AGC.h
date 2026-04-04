@@ -6,10 +6,10 @@
 //
 // Design improvements over simple RMS-tracking AGC:
 // 1. Sliding RMS window (3 frames / 60ms) — smooths syllable-level variation
-// 2. Gate with gain decay — during silence, gain drifts toward unity (0dB)
-//    instead of freezing, so next speech onset starts near neutral
-// 3. Fast release after gate — first frames after gate opening use 2x release
-//    speed for quicker recovery from pauses
+// 2. Gate with gain decay — during silence, gain drifts toward the speaker's
+//    long-term average gain, so next speech onset starts at the right level
+// 3. Fast release after gate — first 5 frames after gate opening use 5x release
+//    speed (capped at alpha=0.5) for quicker recovery from pauses
 // 4. Asymmetric gain limits — amplification limited more than attenuation
 
 #include <cstdint>

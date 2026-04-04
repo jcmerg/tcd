@@ -200,8 +200,8 @@ Gain limits are asymmetric by design: attenuation (down) is safe, amplification 
 **AGC algorithm details:**
 - **Sliding RMS window** (3 frames / 60ms): smooths consonant/vowel variation, tracks syllable-level energy
 - **Per-stream long-term average gain**: tracks the typical gain needed for each speaker via slow EMA (~2s)
-- **Gate with gain decay**: during silence, gain drifts toward the speaker's average gain (not unity), so the first syllable after a pause starts at the right level
-- **Fast post-gate release**: first 5 frames after gate opening use 5x release speed for quicker recovery
+- **Gate with gain decay**: during silence, gain drifts toward the speaker's long-term average gain, so the first syllable after a pause starts at the right level
+- **Fast post-gate release**: first 5 frames after gate opening use 5x release speed (capped at alpha=0.5) for quicker recovery
 - **Peak limiter**: hard limit at -0.1 dBFS, never clips
 
 **Without AGC**, the static gain values must compensate for all level differences between codecs and users. Tuning is tedious and every route needs individual attention.
@@ -224,6 +224,7 @@ Access `http://<tcd-host>:8080` in a browser. Features:
 - **MD380 software vocoder**: Re-encode on/off, cached streams, encode/decode/re-encode counters, active module
 - **Reflector status**: Connected/disconnected, packet counters
 - **Save to INI**: Persist current settings to tcd.ini
+- **Mobile responsive**: Signal flow scrollable, config labels compact, grid collapses on narrow screens
 
 ### ncurses Terminal Monitor (tcdmon)
 
@@ -247,6 +248,20 @@ F_20260402_003512_43521.csv
 Format: `ms,module,codec,rms_in,peak_in,rms_out,peak_out,agc_gain,gate`
 
 Files older than `StatsLogRetain` hours are automatically deleted. Useful for post-hoc AGC analysis with gnuplot, Excel, or Python.
+
+### agc-analyze
+
+Installed as `/usr/local/bin/agc-analyze` by `build.sh`. Analyzes stats CSV files for AGC tuning:
+
+```bash
+agc-analyze                            # detail view, default dir /tmp/tcd-stats
+agc-analyze -s                         # summary table (one line per stream)
+agc-analyze -s -c dmr                  # filter by codec (dstar, dmr, p25, usrp, svx)
+agc-analyze -s -m F                    # filter by module
+agc-analyze file.csv                   # single file detail
+```
+
+Shows per-stream metrics: duration, speech/gated frame ratio, input/output RMS, AGC gain range, clipping percentage. Summary mode (`-s`) is useful for comparing gain settings across many transmissions.
 
 ## DV3003 Notes
 
@@ -280,9 +295,9 @@ sudo journalctl -u tcd -f          # follow logs
 - **MD380 stream isolation**: Save/restore encoder state per stream, mutex around all MD380 calls
 
 ### Monitoring & Configuration
-- **Web dashboard**: Embedded mongoose HTTP+WS with signal flow, VU meters, grouped gain sliders (Output/DVSI/USRP/Software), AGC controls, DVSI slot tracking, MD380 vocoder status, save-to-INI
+- **Web dashboard**: Embedded mongoose HTTP+WS with signal flow, VU meters, grouped gain sliders (Output/DVSI/USRP/Software), AGC controls, DVSI slot tracking, MD380 vocoder status, save-to-INI, mobile responsive
 - **ncurses monitor** (`tcdmon`): SSH-friendly terminal UI with device slots, MD380 counters, active modules, output gain summary
-- **Stats CSV logging**: Per-stream per-codec AGC/level recording with auto-cleanup
+- **Stats CSV logging**: Per-stream per-codec AGC/level recording with auto-cleanup, `agc-analyze` CLI tool for post-hoc analysis
 - **Config key renames**: `DmrGainIn/Out` (was DmrYsfGainIn/Out), `UsrpGainIn/Out` (was UsrpRxGain/TxGain), gain ranges extended to ±40 dB
 
 ### Reliability
