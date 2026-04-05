@@ -717,7 +717,6 @@ void CController::AudiotoCodec2(std::shared_ptr<CTranscoderPacket> packet)
 // push the packet onto both the dstar and the dmr queue.
 void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 {
-	uint8_t ambe2[9];
 	uint8_t imbe[11];
 
 	if (packet->IsSecond())
@@ -800,6 +799,7 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	else
 	{
 #ifdef WITH_MD380_VOCODER
+		uint8_t ambe2[9];
 		int16_t dmr_buf[160];
 		memcpy(dmr_buf, packet->GetAudioSamples(), sizeof(dmr_buf));
 		ApplyGain(dmr_buf, 160, outgain_dmr_num);
