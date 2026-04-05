@@ -12,7 +12,8 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 800px) {
   .grid { grid-template-columns: 1fr; }
-  .flow-row { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .flow { overflow-x: visible; }
+  .flow-row { flex-wrap: wrap; }
   .config-row label { width: 100px; font-size: 12px; }
   .config-row input[type=range] { max-width: 150px; }
   .agc-info { flex-wrap: wrap; }
