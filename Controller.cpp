@@ -26,7 +26,9 @@
 #include <thread>
 #include <queue>
 #include <vector>
+#ifdef WITH_MD380_VOCODER
 #include <md380_vocoder.h>
+#endif
 
 #include "TranscoderPacket.h"
 #include "Controller.h"
@@ -59,6 +61,7 @@ void CController::ApplyGain(int16_t *samples, int count, int32_t num)
 	}
 }
 
+#ifdef WITH_MD380_VOCODER
 static void Md380Stat(char module, std::atomic<uint32_t> &counter)
 {
 	counter.fetch_add(1, std::memory_order_relaxed);
@@ -68,6 +71,7 @@ static void Md380Stat(char module, std::atomic<uint32_t> &counter)
 			std::chrono::steady_clock::now().time_since_epoch()).count(),
 		std::memory_order_relaxed);
 }
+#endif
 
 CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256), outgain_dstar_num(256), outgain_dmr_num(256), outgain_usrp_num(256), outgain_imbe_num(256), outgain_m17_num(256) {}
 
@@ -439,6 +443,12 @@ bool CController::InitVocoders()
 	// Single device with md380 software vocoder for DMR
 	else if (deviceset.size() == 1)
 	{
+#ifndef WITH_MD380_VOCODER
+		std::cerr << "ERROR: A single DVSI device requires the md380_vocoder library for software DMR encoding." << std::endl;
+		std::cerr << "       Without md380_vocoder, minimum hardware is: 2x AMBE3000 (DV3000)," << std::endl;
+		std::cerr << "       1x AMBE3003 (DV3003), or one DV3000 + one DV3003 (mixed mode)." << std::endl;
+		return true;
+#else
 		std::cout << "Using one DVSI device and md380_vocoder" << std::endl;
 		const auto &dev = deviceset.front();
 		Edvtype dvtype = Edvtype::dv3003;
@@ -457,6 +467,7 @@ bool CController::InitVocoders()
 		if (dstar_device->OpenDevice(dev.first, dev.second, dvtype,
 				int8_t(g_Conf.GetGain(EGainType::dstarin)), int8_t(g_Conf.GetGain(EGainType::dstarout))))
 			return true;
+#endif
 	}
 	else
 	{
@@ -464,13 +475,21 @@ bool CController::InitVocoders()
 		return true;
 	}
 
-	// Always init md380 software vocoder (used for DMR re-encode after AGC)
+#ifdef WITH_MD380_VOCODER
 	md380_init();
 	g_Stats.md380.available.store(true, std::memory_order_relaxed);
 	if (dmrsf_device)
 		std::cout << "md380 vocoder: DMR re-encode after AGC" << std::endl;
 	else
 		std::cout << "md380 vocoder: primary DMR codec" << std::endl;
+#else
+	if (g_Stats.config.dmr_reencode_enabled.load(std::memory_order_relaxed))
+	{
+		std::cerr << "WARNING: DMRReEncode is enabled in config but md380_vocoder is not compiled in." << std::endl;
+		std::cerr << "         Re-encoding will be skipped. Build with md380=true (default) to enable it." << std::endl;
+		g_Stats.config.dmr_reencode_enabled.store(false, std::memory_order_relaxed);
+	}
+#endif
 
 	dstar_device->Start();
 	if (dmrsf_device)
@@ -570,6 +589,7 @@ void CController::ReadReflectorThread()
 
 			// Sync md380 software vocoder stats
 			{
+#ifdef WITH_MD380_VOCODER
 				auto now_ms = (uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
 					std::chrono::steady_clock::now().time_since_epoch()).count();
 				uint64_t last = g_Stats.md380.last_active_ms.load(std::memory_order_relaxed);
@@ -580,6 +600,7 @@ void CController::ReadReflectorThread()
 					(m_agc.IsEnabled() || outgain_dmr_num != 256 || dmr_reencode_num != 256),
 					std::memory_order_relaxed);
 				g_Stats.md380.cached_streams.store((int)md380_state_cache.size(), std::memory_order_relaxed);
+#endif
 			}
 		}
 
@@ -778,6 +799,7 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	}
 	else
 	{
+#ifdef WITH_MD380_VOCODER
 		int16_t dmr_buf[160];
 		memcpy(dmr_buf, packet->GetAudioSamples(), sizeof(dmr_buf));
 		ApplyGain(dmr_buf, 160, outgain_dmr_num);
@@ -785,6 +807,7 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		md380_encode_fec(ambe2, dmr_buf);
 		Md380Stat(packet->GetModule(), g_Stats.md380.encodes);
 		packet->SetDMRData(ambe2);
+#endif
 	}
 
 	// IMBE/P25
@@ -835,6 +858,7 @@ void CController::ProcessC2Thread()
 
 void CController::AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet)
 {
+#ifdef WITH_MD380_VOCODER
 	uint8_t ambe2[9];
 	int16_t gained[160];
 	memcpy(gained, packet->GetAudioSamples(), sizeof(gained));
@@ -859,10 +883,12 @@ void CController::AudiotoSWAMBE2(std::shared_ptr<CTranscoderPacket> packet)
 	send_mux.lock();
 	if (packet->AllCodecsAreSet() && packet->HasNotBeenSent()) SendToReflector(packet);
 	send_mux.unlock();
+#endif
 }
 
 void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 {
+#ifdef WITH_MD380_VOCODER
 	int16_t tmp[160];
 	{
 		std::lock_guard<std::mutex> lock(md380_mux);
@@ -899,10 +925,12 @@ void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	codec2_queue.push(packet);
 	imbe_queue.push(packet);
 	usrp_queue.push(packet);
+#endif
 }
 
 void CController::ProcessSWAMBE2Thread()
 {
+#ifdef WITH_MD380_VOCODER
 	while (keep_running)
 	{
 		auto packet = swambe2_queue.pop();
@@ -923,6 +951,7 @@ void CController::ProcessSWAMBE2Thread()
 				break;
 		}
 	}
+#endif
 }
 
 void CController::AudiotoIMBE(std::shared_ptr<CTranscoderPacket> packet)
@@ -1268,6 +1297,7 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		// Re-encode DMR from AGC'd PCM via md380 software vocoder
 		// Always re-encode when AGC or OutputGainDMR is active, otherwise the
 		// original (un-gained) AMBE data passes through unchanged
+#ifdef WITH_MD380_VOCODER
 		if (g_Stats.config.dmr_reencode_enabled.load(std::memory_order_relaxed) &&
 		    (m_agc.IsEnabled() || outgain_dmr_num != 256 || dmr_reencode_num != 256))
 		{
@@ -1317,6 +1347,7 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 			Md380Stat(packet->GetModule(), g_Stats.md380.reencodes);
 			packet->SetDMRData(ambe2);
 		}
+#endif
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
 		usrp_queue.push(packet);
