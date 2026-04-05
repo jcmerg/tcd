@@ -124,6 +124,8 @@ DmrGainOut      = 0
 # USRP/SVX PCM gains in dB (-40 to +40)
 UsrpGainIn      = 0
 UsrpGainOut     = 0
+
+# Software vocoder
 DmrReencodeGain = 0             # additional gain for MD380 DMR re-encode only
 DMRReEncode     = true          # false = skip DMR re-encode, original AMBE passthrough
 
