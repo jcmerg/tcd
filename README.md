@@ -121,13 +121,19 @@ DeviceSerial = DKB7FXGE
 # Output Gain — post-AGC, per target codec, in dB
 # AMBE2+ (DMR/YSF) is inherently ~15-20 dB louder than AMBE (D-Star) at the
 # same PCM input level. This is a known codec characteristic confirmed by
-# xlxd/ambed (20 dB offset) and DVSwitch (~15 dB). Adjust OutputGainDMR to
-# match perceived loudness across modes.
-OutputGainDStar = 0             # D-Star output (-40 to +10)
-OutputGainM17   = 0             # M17/Codec2 output (-40 to +10)
-OutputGainDMR   = -16           # DMR/YSF output (-40 to 0, typically -10 to -20)
-OutputGainIMBE  = 0             # P25/NXDN output (-40 to +10)
-OutputGainUSRP  = 0             # USRP output (-40 to +10)
+# xlxd/ambed (20 dB offset) and DVSwitch (~15 dB).
+#
+# How OutputGainDMR is applied depends on the build and config:
+#   - With md380 + DMRReEncode=true: gain applied on PCM before re-encode.
+#     Typical value: -16 (matches the ~15-20 dB codec difference).
+#   - Without md380 or DMRReEncode=false: gain applied via AMBE2+ bitstream
+#     b2 parameter manipulation (no decode/re-encode needed).
+#     Typical value: 0 (b2 adjustment is more sensitive, -16 would be too much).
+OutputGainDStar = 0             # D-Star output
+OutputGainM17   = 0             # M17/Codec2 output
+OutputGainDMR   = 0             # DMR/YSF output (see note above; -16 with md380 re-encode)
+OutputGainIMBE  = 0             # P25/NXDN output
+OutputGainUSRP  = 0             # USRP output
 
 # DVSI Hardware Gains in dB (-40 to +40) — inside the DVSI chip
 DStarGainIn     = 0
@@ -173,17 +179,26 @@ Source Codec --[DVSI GainIn]--> PCM --[AGC]--> normalized PCM --[OutputGain]--> 
 
 #### Output Gain (post-AGC)
 
-Applied after AGC, independently per target codec. AMBE2+ (DMR/YSF) is inherently ~15-20 dB louder than AMBE (D-Star) at the same PCM input level — this is a known codec characteristic also addressed by xlxd/ambed (20 dB offset) and DVSwitch (~15 dB). `OutputGainDMR` should typically be set between -10 and -20 dB.
+Applied after AGC, independently per target codec. AMBE2+ (DMR/YSF) is inherently ~15-20 dB louder than AMBE (D-Star) at the same PCM input level — this is a known codec characteristic also addressed by xlxd/ambed (20 dB offset) and DVSwitch (~15 dB).
 
-| Parameter | Default | Range | Applied to |
-|-----------|---------|-------|------------|
-| `OutputGainDStar` | `0` | -40 to +10 | D-Star DVSI encode |
-| `OutputGainM17` | `0` | -40 to +10 | M17/Codec2 encode |
-| `OutputGainDMR` | `0` | -40 to 0 | DMR/YSF DVSI encode, MD380 sw encode |
-| `OutputGainIMBE` | `0` | -40 to +10 | P25/NXDN (IMBE encoder) |
-| `OutputGainUSRP` | `0` | -40 to +10 | USRP output |
+| Parameter | Default | Applied to |
+|-----------|---------|------------|
+| `OutputGainDStar` | `0` | D-Star DVSI encode |
+| `OutputGainM17` | `0` | M17/Codec2 encode |
+| `OutputGainDMR` | `0` | DMR/YSF (see below) |
+| `OutputGainIMBE` | `0` | P25/NXDN (IMBE encoder) |
+| `OutputGainUSRP` | `0` | USRP output |
 
 Gains are applied on local copies in each encode function and in the DVSI FeedDevice thread — the shared PCM buffer is never modified.
+
+**OutputGainDMR** has two operating modes depending on the build:
+
+| Mode | When | How gain is applied | Recommended value |
+|------|------|--------------------|--------------------|
+| **PCM gain** | `md380=true` + `DMRReEncode=true` | Applied to PCM before md380 re-encode. Also provides AGC normalization for DMR→DMR/YSF. | `-16` |
+| **Bitstream gain** | No md380, or `DMRReEncode=false` | Adjusts the b2 (delta-gamma) parameter directly in the AMBE2+ frame. No decode/re-encode, no quality loss, but no AGC on DMR→DMR/YSF. | `0` (b2 is more sensitive; -16 would over-attenuate) |
+
+With the **PCM gain** path (md380 re-encode), `-16` compensates for the full ~15-20 dB codec loudness difference. With the **bitstream gain** path, the b2 parameter operates in the vocoder's internal log-domain with DPCM amplification (~2 dB per step), so `0` already provides appropriate attenuation at the default conversion factor. Adjust in small steps (±2-4 dB) if needed.
 
 #### DVSI Hardware Gain
 
@@ -220,6 +235,8 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 |-----------|---------|-------------|
 | `DMRReEncode` | `false` | Re-encode DMR/YSF output via MD380 after AGC. Without re-encode, DMR→DMR listeners receive un-normalized audio (AGC still applies to cross-mode paths like DMR→D-Star). Ignored with a warning if md380 is not compiled in. |
 | `DmrReencodeGain` | `0` | Additional gain (dB) applied before MD380 re-encode. Normally 0 — use `OutputGainDMR` instead. |
+
+**Without md380 or with `DMRReEncode=false`**: `OutputGainDMR` is applied via AMBE2+ bitstream b2 parameter manipulation — the gain field in the vocoder frame is adjusted directly without decode/re-encode. This preserves original audio quality but does not provide AGC normalization for DMR→DMR/YSF. Set `OutputGainDMR = 0` in this mode (the default b2 conversion already compensates for the codec loudness difference). With md380 re-encode active, set `OutputGainDMR = -16` to compensate on the PCM level.
 
 Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.
 
@@ -316,6 +333,7 @@ sudo journalctl -u tcd -f          # follow logs
 
 ### Audio Processing
 - **Per-codec output gains**: Independent post-AGC gains for D-Star, M17/Codec2, DMR/YSF, P25/NXDN, USRP — applied in encode functions and DVSI FeedDevice (shared buffer never modified)
+- **AMBE2+ bitstream gain**: When md380 re-encode is not active, `OutputGainDMR` adjusts the b2 (delta-gamma) parameter directly in the AMBE2+ frame — no vocoder decode/re-encode needed, no quality loss. Uses Golay(24,12) FEC recomputation for the A partition.
 - **AGC v3**: Sliding RMS window (60ms), per-stream speaker tracking, gate-with-decay to speaker average, fast post-gate release (5x/5 frames), asymmetric limits (up to 40dB), noise gate with hysteresis, peak limiter, live reconfiguration from dashboard
 - **DMR re-encode** (requires `md380=true`): Active when AGC or OutputGainDMR is set — ensures DMR→DMR passthrough is also normalized. Can be disabled with `DMRReEncode = false` to preserve original AMBE quality
 - **MD380 stream isolation**: Save/restore encoder state per stream, mutex around all MD380 calls
