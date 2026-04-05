@@ -476,7 +476,11 @@ bool CController::InitVocoders()
 	}
 
 #ifdef WITH_MD380_VOCODER
-	md380_init();
+	if (md380_init())
+	{
+		std::cerr << "ERROR: md380_init() failed — cannot use MD380 software vocoder" << std::endl;
+		return true;
+	}
 	g_Stats.md380.available.store(true, std::memory_order_relaxed);
 	if (dmrsf_device)
 		std::cout << "md380 vocoder: DMR re-encode after AGC" << std::endl;
