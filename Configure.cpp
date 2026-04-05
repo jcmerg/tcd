@@ -39,7 +39,7 @@
 #define OUTGAIN_M17    "OutputGainM17"
 #define DMRREENCODE_EN "DMRReEncode"
 #define AMBEGAIN_EN    "AmbeGain"
-#define AMBEGAIN_STEPS "AmbeGainSteps"
+#define AMBEGAIN_DB    "AmbeGainDb"
 #define MODULES        "Modules"
 #define SERVERADDRESS  "ServerAddress"
 #define PORT           "Port"
@@ -171,11 +171,11 @@ bool CConfigure::ReadData(const std::string &path)
 			dmr_reencode_enabled = IS_TRUE(value[0]);
 		else if (0 == key.compare(AMBEGAIN_EN))
 			ambe_gain_enabled = IS_TRUE(value[0]);
-		else if (0 == key.compare(AMBEGAIN_STEPS))
+		else if (0 == key.compare(AMBEGAIN_DB))
 		{
-			ambe_gain_steps = getSigned(key, value);
-			if (ambe_gain_steps < 0) ambe_gain_steps = 0;
-			if (ambe_gain_steps > 15) ambe_gain_steps = 15;
+			ambe_gain_db = getSigned(key, value);
+			if (ambe_gain_db > 0) ambe_gain_db = 0;
+			if (ambe_gain_db < -30) ambe_gain_db = -30;
 		}
 		else if (0 == key.compare(DEVICESERIAL))
 			device_serials.push_back(value);
@@ -258,7 +258,7 @@ bool CConfigure::ReadData(const std::string &path)
 	if (!dmr_reencode_enabled)
 		std::cout << "DMRReEncode = false (DMR passthrough, no re-encode after AGC)" << std::endl;
 	if (ambe_gain_enabled)
-		std::cout << "AmbeGain = enabled, Steps=" << ambe_gain_steps << " (b2 bitstream gain for DMR/YSF)" << std::endl;
+		std::cout << "AmbeGain = enabled, " << ambe_gain_db << " dB (b2 bitstream gain for DMR/YSF)" << std::endl;
 	if (agc_enabled)
 		std::cout << "AGC = enabled, Target=" << agc_target << "dBFS, Attack=" << agc_attack << "ms, Release=" << agc_release << "ms, Up=+" << agc_maxgain_up << "dB, Down=-" << agc_maxgain_down << "dB" << std::endl;
 	else

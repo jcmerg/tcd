@@ -108,7 +108,7 @@ public:
 		std::atomic<int>   outgain_m17{0};
 		std::atomic<bool>  dmr_reencode_enabled{false};
 		std::atomic<bool>  ambe_gain_enabled{true};
-		std::atomic<int>   ambe_gain_steps{5};
+		std::atomic<int>   ambe_gain_db{-10};
 	} config;
 
 	// Module name list (set at startup)
