@@ -79,8 +79,7 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
 .btn:hover { background: #1a4a7a; }
 
 /* Connection indicator */
-.conn { position: fixed; top: 8px; right: 16px; font-size: 12px; padding: 4px 10px;
-        border-radius: 4px; }
+.conn { font-size: 12px; padding: 4px 10px; border-radius: 4px; }
 .conn.ok { background: #1b5e20; color: #a5d6a7; }
 .conn.err { background: #b71c1c; color: #ef9a9a; }
 
@@ -88,8 +87,10 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
 </style>
 </head>
 <body>
-<h1>TCD Transcoder Monitor</h1>
-<div class="conn" id="conn">connecting...</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+<h1 style="margin-bottom:0">TCD Transcoder Monitor</h1>
+<span class="conn" id="conn">connecting...</span>
+</div>
 
 <div id="modules"></div>
 
