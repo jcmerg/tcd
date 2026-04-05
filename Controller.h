@@ -64,10 +64,12 @@ protected:
 	CPacketQueue usrp_queue;
 	std::mutex send_mux;
 	std::mutex p25vocoder_mux;
+#ifdef WITH_MD380_VOCODER
 	std::mutex md380_mux;
 	uint16_t md380_enc_streamid = 0;
 	struct Md380CacheEntry { std::vector<uint8_t> state; std::chrono::steady_clock::time_point last_used; };
 	std::unordered_map<uint16_t, Md380CacheEntry> md380_state_cache;
+#endif
 	int32_t ambe_in_num, ambe_out_num, usrp_rx_num, usrp_tx_num, dmr_reencode_num;
 	int32_t outgain_dstar_num, outgain_dmr_num, outgain_usrp_num, outgain_imbe_num, outgain_m17_num;
 	imbe_vocoder p25vocoder;

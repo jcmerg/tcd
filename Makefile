@@ -14,7 +14,20 @@ else
 CFLAGS = -W -Werror -Icodec2 -MMD -MD -std=c++17
 endif
 
-LDFLAGS = -lftd2xx -limbe_vocoder -pthread -lmd380_vocoder -latomic
+# MD380 software vocoder: disabled by default, enable with: make md380=true
+# With md380=true: single DVSI device is sufficient (D-Star HW + DMR SW)
+#                  and DMR re-encode after AGC is available
+# Without md380:   minimum hardware is 2x AMBE3000, 1x AMBE3003, or DV3000+DV3003
+ifeq ($(md380), true)
+CFLAGS += -DWITH_MD380_VOCODER
+MD380_LDLIB = -lmd380_vocoder
+MD380_SECT  = -Xlinker --section-start=.firmware=0x0800C000 -Xlinker --section-start=.sram=0x20000000
+else
+MD380_LDLIB =
+MD380_SECT  =
+endif
+
+LDFLAGS = -lftd2xx -limbe_vocoder -pthread $(MD380_LDLIB) -latomic
 
 # Explicit source list (includes urfd shared files)
 SRCS = Configure.cpp Controller.cpp DV3000.cpp DV3003.cpp DVSIDevice.cpp \
@@ -34,7 +47,7 @@ all : urfd-files monitor_html.cpp
 	$(MAKE) $(EXE) $(MON)
 
 $(EXE) : $(OBJS)
-	$(GCC) $(OBJS) $(LDFLAGS) -o $@ -Xlinker --section-start=.firmware=0x0800C000 -Xlinker  --section-start=.sram=0x20000000
+	$(GCC) $(OBJS) $(LDFLAGS) -o $@ $(MD380_SECT)
 
 $(MON) : tcdmon.o
 	$(GCC) tcdmon.o -lncurses -o $@

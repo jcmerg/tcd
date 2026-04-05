@@ -9,10 +9,17 @@ tcd is a hybrid transcoder for the [URF reflector](https://github.com/jcmerg/urf
 ## Requirements
 
 - Linux (systemd-based, Debian/Ubuntu recommended)
-- DVSI AMBE hardware: USB-3000 / ThumbDV / DVstick-30 (1 channel) or USB-3003 / DVstick-33 (3 channels)
 - [imbe_vocoder](https://github.com/jcmerg/imbe_vocoder) library
 - [libftd2xx](https://ftdichip.com/drivers/d2xx-drivers/) FTDI driver
-- [md380_vocoder](https://github.com/jcmerg/md380_vocoder) — always required (ARM native or x86_64 via dynarmic)
+- DVSI AMBE hardware (see Device Configurations below)
+- [md380_vocoder](https://github.com/jcmerg/md380_vocoder) *(optional — required only when building with `md380=true`)*
+
+### Hardware Requirements by Build Type
+
+| Build | Min. Hardware | Enabled Features |
+|-------|---------------|------------------|
+| `make` (default) | 2× AMBE3000 (DV3000), **or** 1× AMBE3003 (DV3003), **or** DV3000+DV3003 | All codecs; no software DMR fallback |
+| `make md380=true` | 1× AMBE device (DV3000 or DV3003) | All codecs + software DMR via MD380, DMR re-encode after AGC |
 
 ## Device Configurations
 
@@ -34,9 +41,9 @@ Channel assignment (automatic):
 - **DV3003 ch1**: DMR for first module (F)
 - **DV3003 ch2**: DMR for second module (S)
 
-### 2. Single Device + MD380 (1 module)
+### 2. Single Device + MD380 (1 module, requires `md380=true` build)
 
-One DVSI device for D-Star, MD380 software vocoder for DMR/YSF. Only supports 1 transcoded module. Works on ARM and x86_64.
+One DVSI device for D-Star, MD380 software vocoder for DMR/YSF. Only supports 1 transcoded module. Works on ARM and x86_64. Build with `make md380=true` (or `build.sh --with-md380`).
 
 ```ini
 Modules = S
@@ -70,7 +77,8 @@ If you have other FTDI devices (USB serial adapters etc.), use `DeviceSerial` in
 ```bash
 git clone https://github.com/jcmerg/tcd.git
 cd tcd
-sudo bash build.sh
+sudo bash build.sh               # without md380 (requires ≥2 AMBE devices)
+sudo bash build.sh --with-md380  # with md380 (1 AMBE device sufficient)
 ```
 
 The script clones/updates both tcd and urfd repos (tcd has symlinks to urfd source files), builds and installs the binary, and restarts the service.
@@ -88,12 +96,14 @@ cp config/* .
 
 Edit configuration:
 - `tcd.ini` — set ServerAddress, Modules, DeviceSerial, gain values
+- `tcd.mk` — set `md380 = true` to enable the MD380 software vocoder
 - `tcd.service` — already configured for `/usr/local/bin/tcd`
 
 Build and install:
 
 ```bash
-make -j$(nproc)
+make -j$(nproc)           # without md380 (default)
+make -j$(nproc) md380=true  # with md380 software vocoder
 sudo make install
 ```
 
@@ -199,7 +209,7 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 | `AGCMaxGainUp` | `20` | Maximum amplification in dB. Limits noise boost on quiet input. |
 | `AGCMaxGainDown` | `24` | Maximum attenuation in dB. Limits reduction on loud input. |
 | `AGCNoiseGate` | `-55` | Noise gate threshold in dBFS. Below this level, gain is frozen. |
-| `DMRReEncode` | `true` | Enable DMR/YSF re-encode via MD380 after AGC. This is the primary reason for re-encoding: without it, DMR/YSF→DMR/YSF listeners receive un-normalized audio. When `false`, original AMBE passes through unchanged (AGC still applies to all cross-mode paths). |
+| `DMRReEncode` | `true` | Enable DMR/YSF re-encode via MD380 after AGC. **Requires `md380=true` build** — ignored (with a warning) otherwise. This is the primary reason for re-encoding: without it, DMR/YSF→DMR/YSF listeners receive un-normalized audio. When `false`, original AMBE passes through unchanged (AGC still applies to all cross-mode paths). |
 
 Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.
 
@@ -307,7 +317,7 @@ sudo journalctl -u tcd -f          # follow logs
 - **Config key renames**: `DmrGainIn/Out` (was DmrYsfGainIn/Out), `UsrpGainIn/Out` (was UsrpRxGain/TxGain), gain ranges extended to ±40 dB
 
 ### Reliability
-- **MD380 always linked**: Runtime device detection instead of compile-time flags
+- **Optional MD380**: Build with `md380=true` / `--with-md380` to enable; without it, ≥2 AMBE devices are required and DMR re-encode is unavailable
 - **Performance**: FTDI event notification instead of busy-poll, condition variables, ~5% CPU on Pi
 - **Thread safety**: Mutex around IMBE vocoder, SIGPIPE ignored for clean reconnection
 - **Error handling**: SendToReflector retry with backoff, graceful queue overflow, ReadDevice timeout recovery

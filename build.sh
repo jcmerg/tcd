@@ -3,14 +3,27 @@
 # Automatically installs all dependencies, builds and deploys.
 # Run as root or with sudo.
 #
+# Usage:
+#   sudo bash build.sh               # build without md380 (requires ≥2 AMBE devices)
+#   sudo bash build.sh --with-md380  # build with md380 software vocoder
+#
 # Dependencies (auto-installed):
 #   - libftd2xx (FTDI driver) — from ftdichip.com
 #   - libimbe_vocoder — from jcmerg/imbe_vocoder
-#   - libmd380_vocoder — armhf native (jcmerg/md380_vocoder)
+#   - libmd380_vocoder (only with --with-md380) — armhf native (jcmerg/md380_vocoder)
 #                        or x86_64/aarch64 via dynarmic (jcmerg/md380_vocoder_dynarmic)
 #   - urfd (for shared TCPacketDef.h/TCSocket.h)
 
 set -e
+
+# Parse arguments
+WITH_MD380=false
+for arg in "$@"; do
+    case "$arg" in
+        --with-md380) WITH_MD380=true ;;
+        *) echo "Unknown argument: $arg"; echo "Usage: $0 [--with-md380]"; exit 1 ;;
+    esac
+done
 
 BUILDDIR="/tmp/tcd-build"
 TCD_REPO="https://github.com/jcmerg/tcd.git"
@@ -34,6 +47,7 @@ esac
 
 echo "=== Building tcd ==="
 echo "Architecture: $ARCH (compiler: $CC_ARCH)"
+echo "MD380 software vocoder: $WITH_MD380"
 
 # Check build tools
 for cmd in g++ make git; do
@@ -107,49 +121,53 @@ else
 fi
 
 # ---------------------------------------------------------------
-# 3. libmd380_vocoder (DMR/YSF software codec)
+# 3. libmd380_vocoder (DMR/YSF software codec) — only with --with-md380
 # ---------------------------------------------------------------
-if [ ! -f /usr/local/lib/libmd380_vocoder.a ]; then
-    echo "Building md380_vocoder..."
-    if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "aarch64" ]; then
-        # x86_64/aarch64: use dynarmic (ARM Cortex-M JIT emulation)
-        for cmd in cmake unzip python3 xxd; do
-            if ! command -v $cmd &>/dev/null; then
-                echo "Installing cmake and tools..."
-                apt-get update && apt-get install -y cmake unzip python3 xxd libboost-dev
-                break
-            fi
-        done
+if [ "$WITH_MD380" = "true" ]; then
+    if [ ! -f /usr/local/lib/libmd380_vocoder.a ]; then
+        echo "Building md380_vocoder..."
+        if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "aarch64" ]; then
+            # x86_64/aarch64: use dynarmic (ARM Cortex-M JIT emulation)
+            for cmd in cmake unzip python3 xxd; do
+                if ! command -v $cmd &>/dev/null; then
+                    echo "Installing cmake and tools..."
+                    apt-get update && apt-get install -y cmake unzip python3 xxd libboost-dev
+                    break
+                fi
+            done
 
-        if [ -d md380_vocoder_dynarmic ]; then
-            cd md380_vocoder_dynarmic && git pull && cd ..
+            if [ -d md380_vocoder_dynarmic ]; then
+                cd md380_vocoder_dynarmic && git pull && cd ..
+            else
+                git clone --depth 1 "$MD380_X64_REPO" md380_vocoder_dynarmic
+            fi
+            cd md380_vocoder_dynarmic
+            mkdir -p build && cd build
+            cmake .. && make -j$(nproc)
+            sh ../makelib.sh
+            cp libmd380_vocoder.a /usr/local/lib/
+            cp ../md380_vocoder.h /usr/local/include/
+            cd "$BUILDDIR"
         else
-            git clone --depth 1 "$MD380_X64_REPO" md380_vocoder_dynarmic
+            # ARM: native md380 firmware
+            if [ -d md380_vocoder ]; then
+                cd md380_vocoder && git pull && cd ..
+            else
+                git clone --depth 1 "$MD380_ARM_REPO" md380_vocoder
+            fi
+            cd md380_vocoder
+            make clean && make -j$(nproc)
+            cp libmd380_vocoder.a /usr/local/lib/
+            cp md380_vocoder.h /usr/local/include/
+            cd "$BUILDDIR"
         fi
-        cd md380_vocoder_dynarmic
-        mkdir -p build && cd build
-        cmake .. && make -j$(nproc)
-        sh ../makelib.sh
-        cp libmd380_vocoder.a /usr/local/lib/
-        cp ../md380_vocoder.h /usr/local/include/
-        cd "$BUILDDIR"
+        ldconfig
+        echo "md380_vocoder installed"
     else
-        # ARM: native md380 firmware
-        if [ -d md380_vocoder ]; then
-            cd md380_vocoder && git pull && cd ..
-        else
-            git clone --depth 1 "$MD380_ARM_REPO" md380_vocoder
-        fi
-        cd md380_vocoder
-        make clean && make -j$(nproc)
-        cp libmd380_vocoder.a /usr/local/lib/
-        cp md380_vocoder.h /usr/local/include/
-        cd "$BUILDDIR"
+        echo "md380_vocoder: already installed"
     fi
-    ldconfig
-    echo "md380_vocoder installed"
 else
-    echo "md380_vocoder: already installed"
+    echo "md380_vocoder: skipped (use --with-md380 to enable)"
 fi
 
 # ---------------------------------------------------------------
@@ -181,7 +199,11 @@ cp config/* .
 
 echo "Compiling tcd..."
 make clean
-make -j$(nproc)
+if [ "$WITH_MD380" = "true" ]; then
+    make -j$(nproc) md380=true
+else
+    make -j$(nproc)
+fi
 
 # ---------------------------------------------------------------
 # 6. Install
