@@ -31,16 +31,6 @@ static const uint8_t AMBE_BIT_MASK[] = {0x80U, 0x40U, 0x20U, 0x10U, 0x08U, 0x04U
 #define AMBE_READ_BIT(p,i)     (((p)[(i)>>3] & AMBE_BIT_MASK[(i)&7]) != 0)
 #define AMBE_WRITE_BIT(p,i,b)  (p)[(i)>>3] = (b) ? ((p)[(i)>>3] | AMBE_BIT_MASK[(i)&7]) : ((p)[(i)>>3] & ~AMBE_BIT_MASK[(i)&7])
 
-// Convert dB offset to approximate b2 step offset.
-// In the useful range (indices 8-24), each b2 step ≈ 1.0-1.4 dB.
-// The DPCM formula (gamma = delta + 0.5*prev) means the steady-state
-// effect is ~2x the delta change, so each b2 step ≈ 2 dB perceived.
-// Empirical factor: 0.3 steps per dB → -16 dB ≈ 5 steps.
-static inline int AmbeDbToSteps(int gain_db)
-{
-	return (int)roundf((float)gain_db * -0.3f);
-}
-
 // Adjust the b2 (delta-gamma) gain parameter in a 9-byte AMBE2+ frame.
 // step_offset > 0 reduces gain (quieter), < 0 increases gain (louder).
 // The A partition is Golay(24,12) protected; FEC is recomputed after modification.
