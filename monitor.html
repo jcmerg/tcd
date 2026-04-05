@@ -397,11 +397,13 @@ document.getElementById('ambe_gain_db').addEventListener('input', (e) => {
 
 function updateGainInterlock() {
   const reenc = document.getElementById('dmr_reencode_en').checked;
-  const ambe = document.getElementById('ambe_gain_en').checked;
+  // When Re-encode active: gray out AmbeGain slider (checkbox stays usable)
   document.getElementById('ambe_gain_db').disabled = reenc;
   document.getElementById('ambe_gain_db').style.opacity = reenc ? '0.3' : '1';
-  document.getElementById('g_dmr_reencode').disabled = ambe && !reenc;
-  document.getElementById('g_dmr_reencode').style.opacity = (ambe && !reenc) ? '0.3' : '1';
+  // When Re-encode active: Re-encode gain slider usable
+  // When Re-encode off: gray out Re-encode gain slider
+  document.getElementById('g_dmr_reencode').disabled = !reenc;
+  document.getElementById('g_dmr_reencode').style.opacity = !reenc ? '0.3' : '1';
 }
 
 function saveConfig() {
