@@ -475,8 +475,8 @@ bool CMonitorServer::SaveConfig(const std::string &ini_path)
 				if (key == "OutputGainIMBE")   { out << key << " = " << g_Stats.config.outgain_imbe.load() << "\n"; continue; }
 				if (key == "OutputGainM17")    { out << key << " = " << g_Stats.config.outgain_m17.load() << "\n"; continue; }
 				if (key == "DMRReEncode")      { out << key << " = " << (g_Stats.config.dmr_reencode_enabled.load() ? "true" : "false") << "\n"; continue; }
-					if (key == "AmbeGain")         { out << key << " = " << (g_Stats.config.ambe_gain_enabled.load() ? "true" : "false") << "\n"; continue; }
-					if (key == "AmbeGainDb")       { out << key << " = " << g_Stats.config.ambe_gain_db.load() << "\n"; continue; }
+				if (key == "AmbeGain")         { out << key << " = " << (g_Stats.config.ambe_gain_enabled.load() ? "true" : "false") << "\n"; continue; }
+				if (key == "AmbeGainDb")       { out << key << " = " << g_Stats.config.ambe_gain_db.load() << "\n"; continue; }
 				if (key == "AGC")               { out << key << " = " << (g_Stats.config.agc_enabled.load() ? "true" : "false") << "\n"; continue; }
 				if (key == "AGCTarget")         { out << key << " = " << g_Stats.config.agc_target.load() << "\n"; continue; }
 				if (key == "AGCAttack")         { out << key << " = " << g_Stats.config.agc_attack.load() << "\n"; continue; }
