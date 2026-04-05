@@ -79,7 +79,8 @@ int main(int argc, char *argv[])
 		g_Stats.config.outgain_usrp.store(g_Conf.GetGain(EGainType::outgain_usrp));
 		g_Stats.config.outgain_imbe.store(g_Conf.GetGain(EGainType::outgain_imbe));
 		g_Stats.config.outgain_m17.store(g_Conf.GetGain(EGainType::outgain_m17));
-		g_Stats.config.dmr_reencode_enabled.store(g_Conf.GetDMRReEncodeEnabled());
+		g_Stats.config.dmr_reencode_enabled.store(
+			g_Conf.GetDMRReEncodeEnabled() && g_Stats.md380.available.load(std::memory_order_relaxed));
 		g_Monitor.Start(g_Conf.GetMonitorHttpPort(), g_Conf.GetMonitorStatsPort());
 	}
 
