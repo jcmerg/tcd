@@ -49,7 +49,7 @@ monitor_html.cpp : monitor.html embed_html.sh
 	$(GCC) $(CFLAGS) -c $< -o $@
 
 %.o : %.c
-	gcc -W -Werror -DMG_ENABLE_IPV6=0 -DMG_ENABLE_LOG=0 -c $< -o $@
+	gcc -W -Werror -DMG_ENABLE_IPV6=1 -DMG_ENABLE_LOG=0 -c $< -o $@
 
 urfd-files :
 	@for f in $(URFD_FILES); do \
