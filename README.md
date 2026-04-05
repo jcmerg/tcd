@@ -145,6 +145,12 @@ DmrGainOut      = 0
 UsrpGainIn      = 0
 UsrpGainOut     = 0
 
+# AMBE2+ bitstream gain — adjusts b2 (delta-gamma) in AMBE2+ frames directly.
+# No decode/re-encode needed, also repairs FEC errors in the A partition.
+# Active when DMR Re-encode is not handling the gain (no md380, or DMRReEncode=false).
+AmbeGain        = true          # enable bitstream gain for DMR/YSF passthrough
+AmbeGainDb      = -2            # -30 to 0 dB (each 2 dB ≈ 1 b2 step)
+
 # Software vocoder (only effective with md380=true build)
 DmrReencodeGain = 0             # additional gain for MD380 DMR re-encode only
 DMRReEncode     = false         # true = re-encode DMR via MD380 after AGC (requires md380=true build)
@@ -236,7 +242,16 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 | `DMRReEncode` | `false` | Re-encode DMR/YSF output via MD380 after AGC. Without re-encode, DMR→DMR listeners receive un-normalized audio (AGC still applies to cross-mode paths like DMR→D-Star). Ignored with a warning if md380 is not compiled in. |
 | `DmrReencodeGain` | `0` | Additional gain (dB) applied before MD380 re-encode. Normally 0 — use `OutputGainDMR` instead. |
 
-**Without md380 or with `DMRReEncode=false`**: `OutputGainDMR` is applied via AMBE2+ bitstream b2 parameter manipulation — the gain field in the vocoder frame is adjusted directly without decode/re-encode. This preserves original audio quality but does not provide AGC normalization for DMR→DMR/YSF. Set `OutputGainDMR = 0` in this mode (the default b2 conversion already compensates for the codec loudness difference). With md380 re-encode active, set `OutputGainDMR = -16` to compensate on the PCM level.
+#### AMBE2+ Bitstream Gain (experimental)
+
+Adjusts the b2 (delta-gamma) gain parameter directly in AMBE2+ frames without decode/re-encode. Active when DMR Re-encode is not handling the gain. Also repairs Golay FEC errors in the A partition as a side effect.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `AmbeGain` | `true` | Enable bitstream gain for DMR/YSF passthrough |
+| `AmbeGainDb` | `-2` | Gain in dB (-30 to 0). Each 2 dB ≈ 1 b2 step. Even -2 dB (1 step) repairs FEC errors and reduces choppy audio. |
+
+AmbeGain and DMR Re-encode are mutually exclusive at runtime — if Re-encode handled the gain via PCM, AmbeGain is skipped. Both can be configured simultaneously; Re-encode takes precedence when active.
 
 Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.
 
