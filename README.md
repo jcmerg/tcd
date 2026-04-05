@@ -27,7 +27,7 @@ tcd auto-detects the connected devices and selects the appropriate mode:
 
 ### 1. Mixed Mode: DV3000 + DV3003 (recommended, 2 modules)
 
-Use a DV3000 (1 D-Star channel) together with a DV3003 (1 D-Star + 2 DMR channels) for concurrent 2-module cross-mode transcoding. With `md380=true` build and `DMRReEncode = true`, DMR/YSF output is re-encoded via MD380 software vocoder to apply AGC-normalized audio levels. Without md380, AGC still applies to all cross-mode paths (e.g. DMR→D-Star) but DMR→DMR passes through the original AMBE unchanged.
+Use a DV3000 (1 D-Star channel) together with a DV3003 (1 D-Star + 2 DMR channels) for concurrent 2-module cross-mode transcoding.
 
 ```ini
 Modules = FS            # 2 modules (first = DV3000 D-Star, second = DV3003 mixed)
@@ -41,6 +41,16 @@ Channel assignment (automatic):
 - **DV3003 ch1**: DMR for first module (F)
 - **DV3003 ch2**: DMR for second module (S)
 
+**DMR/YSF gain options:**
+
+| Build | DMR→DMR/YSF gain | AGC on DMR→DMR/YSF | Config |
+|-------|-------------------|--------------------|--------|
+| Without md380 | AmbeGain (bitstream b2) | No | `AmbeGain=true`, `AmbeGainDb=-2` |
+| With md380, `DMRReEncode=true` | OutputGainDMR (PCM) | Yes | `OutputGainDMR=-16`, `DMRReEncode=true` |
+| With md380, `DMRReEncode=false` | AmbeGain (bitstream b2) | No | `AmbeGain=true`, `AmbeGainDb=-2` |
+
+Cross-mode paths (DMR→D-Star, D-Star→DMR, etc.) always have full AGC and OutputGain support regardless of build or mode.
+
 ### 2. Single Device + MD380 (1 module, requires `md380=true` build)
 
 One DVSI device for D-Star, MD380 software vocoder for DMR/YSF. Only supports 1 transcoded module. Works on ARM and x86_64. Build with `make md380=true` (or `build.sh --with-md380`).
@@ -50,11 +60,18 @@ Modules = S
 DeviceSerial = DQ015SBR
 ```
 
-**AGC limitation**: In this mode, DMR/YSF→DMR/YSF audio is **not re-encoded** after AGC. The original AMBE data passes through unchanged because the MD380 cannot safely decode and re-encode in the same pipeline (shared encoder/decoder state). AGC still normalizes audio for all cross-mode paths (DMR→D-Star, DMR→M17, etc.). To get AGC on DMR/YSF→DMR/YSF, use a two-device configuration.
+**AGC limitation**: In this mode, DMR/YSF→DMR/YSF audio is **not re-encoded** after AGC because the MD380 cannot safely decode and re-encode in the same pipeline (shared encoder/decoder state). Use AmbeGain for DMR/YSF level adjustment instead:
+
+```ini
+AmbeGain   = true
+AmbeGainDb = -2
+```
+
+AGC still normalizes audio for all cross-mode paths (DMR→D-Star, DMR→M17, etc.). To get full AGC + re-encode on DMR/YSF→DMR/YSF, use a two-device configuration.
 
 ### 3. Two Same-Type Devices (1-3 modules)
 
-Two DV3000s (1 module) or two DV3003s (up to 3 modules). One device handles D-Star, the other DMR/YSF. With `md380=true` build, DMR re-encode after AGC is available (same as Mixed Mode).
+Two DV3000s (1 module) or two DV3003s (up to 3 modules). One device handles D-Star, the other DMR/YSF. Same gain options as Mixed Mode (see table above).
 
 ```ini
 Modules = AFS           # up to 3 with DV3003 pair
