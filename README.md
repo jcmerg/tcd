@@ -258,7 +258,7 @@ Adjusts the b2 (delta-gamma) gain parameter directly in AMBE2+ frames without de
 | `AmbeGain` | `true` | Enable bitstream gain for DMR/YSF passthrough |
 | `AmbeGainDb` | `-2` | Gain in dB (-30 to 0). Each 2 dB ≈ 1 b2 step. Even -2 dB (1 step) repairs FEC errors and reduces choppy audio. |
 
-AmbeGain and DMR Re-encode are mutually exclusive at runtime — if Re-encode handled the gain via PCM, AmbeGain is skipped. Both can be configured simultaneously; Re-encode takes precedence when active.
+AmbeGain and DMR Re-encode are mutually exclusive. The web dashboard enforces this via a single mode dropdown (Off / Bitstream / Re-encode). If both are enabled in tcd.ini, a warning is logged and Re-encode takes precedence.
 
 Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.
 
