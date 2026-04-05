@@ -155,7 +155,10 @@ bool CConfigure::ReadData(const std::string &path)
 		else if (0 == key.compare(OUTGAIN_DSTAR))
 			outgain_dstar = getSigned(key, value);
 		else if (0 == key.compare(OUTGAIN_DMR))
+		{
 			outgain_dmr = getSigned(key, value);
+			if (outgain_dmr > 0) { std::cerr << "Warning: " << OUTGAIN_DMR << " clamped to 0 (AMBE2+ is inherently louder)" << std::endl; outgain_dmr = 0; }
+		}
 		else if (0 == key.compare(OUTGAIN_USRP))
 			outgain_usrp = getSigned(key, value);
 		else if (0 == key.compare(OUTGAIN_IMBE))

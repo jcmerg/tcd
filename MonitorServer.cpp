@@ -230,7 +230,7 @@ void CMonitorServer::HandleRest(struct mg_connection *c, struct mg_http_message 
 				else if (strncmp(p, "usrp_tx", 7) == 0)       g_Stats.config.gain_usrp_tx.store(db);
 				else if (strncmp(p, "dmr_reencode", 12) == 0)  g_Stats.config.gain_dmr_reencode.store(db);
 				else if (strncmp(p, "outgain_dstar", 13) == 0) g_Stats.config.outgain_dstar.store(db);
-				else if (strncmp(p, "outgain_dmr", 11) == 0)   g_Stats.config.outgain_dmr.store(db);
+				else if (strncmp(p, "outgain_dmr", 11) == 0)   g_Stats.config.outgain_dmr.store(db > 0 ? 0 : db);
 				else if (strncmp(p, "outgain_usrp", 12) == 0)  g_Stats.config.outgain_usrp.store(db);
 				else if (strncmp(p, "outgain_imbe", 12) == 0)  g_Stats.config.outgain_imbe.store(db);
 				else if (strncmp(p, "outgain_m17", 11) == 0)   g_Stats.config.outgain_m17.store(db);

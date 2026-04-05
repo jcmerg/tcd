@@ -118,12 +118,16 @@ Modules = FS                    # must match urfd.ini [Transcoder] section
 DeviceSerial = DQ015SBR
 DeviceSerial = DKB7FXGE
 
-# Output Gain — post-AGC, per target codec, in dB (-40 to +40)
-OutputGainDStar = 0             # D-Star output
-OutputGainM17   = 0             # M17/Codec2 output
-OutputGainDMR   = -16           # DMR/YSF output
-OutputGainIMBE  = 0             # P25/NXDN output
-OutputGainUSRP  = 0             # USRP output
+# Output Gain — post-AGC, per target codec, in dB
+# AMBE2+ (DMR/YSF) is inherently ~15-20 dB louder than AMBE (D-Star) at the
+# same PCM input level. This is a known codec characteristic confirmed by
+# xlxd/ambed (20 dB offset) and DVSwitch (~15 dB). Adjust OutputGainDMR to
+# match perceived loudness across modes.
+OutputGainDStar = 0             # D-Star output (-40 to +10)
+OutputGainM17   = 0             # M17/Codec2 output (-40 to +10)
+OutputGainDMR   = -16           # DMR/YSF output (-40 to 0, typically -10 to -20)
+OutputGainIMBE  = 0             # P25/NXDN output (-40 to +10)
+OutputGainUSRP  = 0             # USRP output (-40 to +10)
 
 # DVSI Hardware Gains in dB (-40 to +40) — inside the DVSI chip
 DStarGainIn     = 0
@@ -169,15 +173,15 @@ Source Codec --[DVSI GainIn]--> PCM --[AGC]--> normalized PCM --[OutputGain]--> 
 
 #### Output Gain (post-AGC)
 
-Applied after AGC, independently per target codec. Use to balance level differences (e.g. DMR/YSF output is often too loud relative to D-Star).
+Applied after AGC, independently per target codec. AMBE2+ (DMR/YSF) is inherently ~15-20 dB louder than AMBE (D-Star) at the same PCM input level — this is a known codec characteristic also addressed by xlxd/ambed (20 dB offset) and DVSwitch (~15 dB). `OutputGainDMR` should typically be set between -10 and -20 dB.
 
-| Parameter | Default | Applied to |
-|-----------|---------|------------|
-| `OutputGainDStar` | `0` | D-Star DVSI encode |
-| `OutputGainM17` | `0` | M17/Codec2 encode |
-| `OutputGainDMR` | `0` | DMR/YSF DVSI encode, MD380 sw encode |
-| `OutputGainIMBE` | `0` | P25/NXDN (IMBE encoder) |
-| `OutputGainUSRP` | `0` | USRP output |
+| Parameter | Default | Range | Applied to |
+|-----------|---------|-------|------------|
+| `OutputGainDStar` | `0` | -40 to +10 | D-Star DVSI encode |
+| `OutputGainM17` | `0` | -40 to +10 | M17/Codec2 encode |
+| `OutputGainDMR` | `0` | -40 to 0 | DMR/YSF DVSI encode, MD380 sw encode |
+| `OutputGainIMBE` | `0` | -40 to +10 | P25/NXDN (IMBE encoder) |
+| `OutputGainUSRP` | `0` | -40 to +10 | USRP output |
 
 Gains are applied on local copies in each encode function and in the DVSI FeedDevice thread — the shared PCM buffer is never modified.
 
@@ -289,7 +293,7 @@ Shows per-stream metrics: duration, speech/gated frame ratio, input/output RMS, 
 
 The DV3003 (AMBE-3003F) requires special handling compared to the DV3000:
 
-- **PKT_COMPAND=0**: D-Star channels on the DV3003 need companding explicitly disabled (the DV3000 defaults to companding off)
+- **PKT_COMPAND=0**: All DV3003 channels need companding explicitly disabled. The DV3003 defaults to companding ON (CP_ENABLE pullup), while the DV3000 defaults to OFF (board wiring). Without this fix, DMR/YSF channels receive mu-law PCM interpreted as linear, causing audio distortion
 - **350-byte serial flush**: Before soft reset, 350 zero bytes are sent to clear any stale serial state
 - **Mixed-mode**: A single DV3003 can have channels configured for different codecs (D-Star + DMR) simultaneously
 
