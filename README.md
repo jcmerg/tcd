@@ -136,12 +136,11 @@ DeviceSerial = DQ015SBR
 DeviceSerial = DKB7FXGE
 
 # Output Gain — post-AGC, per target codec, in dB
-# Applied to PCM before encoding. Only effective on cross-mode paths and
-# (for DMR) when DMRReEncode=true. For DMR/YSF passthrough without re-encode,
-# use AmbeGain instead (see below).
+# Applied to PCM before encoding. Always effective on cross-mode paths.
+# For DMR→DMR/YSF, OutputGainDMR only applies with DmrGainMode=reencode.
 OutputGainDStar = 0             # D-Star output
 OutputGainM17   = 0             # M17/Codec2 output
-OutputGainDMR   = 0             # DMR/YSF output (-16 when using DMRReEncode=true)
+OutputGainDMR   = 0             # DMR/YSF output (-16 with DmrGainMode=reencode)
 OutputGainIMBE  = 0             # P25/NXDN output
 OutputGainUSRP  = 0             # USRP output
 
@@ -349,7 +348,7 @@ sudo journalctl -u tcd -f          # follow logs
 - **Per-codec output gains**: Independent post-AGC gains for D-Star, M17/Codec2, DMR/YSF, P25/NXDN, USRP — applied in encode functions and DVSI FeedDevice (shared buffer never modified)
 - **AMBE2+ bitstream gain** (experimental): `AmbeGainDb` adjusts the b2 (delta-gamma) parameter directly in the AMBE2+ frame — no vocoder decode/re-encode needed, no quality loss. Uses Golay(24,12) FEC recomputation for the A partition. Active when DMR Re-encode is off.
 - **AGC v3**: Sliding RMS window (60ms), per-stream speaker tracking, gate-with-decay to speaker average, fast post-gate release (5x/5 frames), asymmetric limits (up to 40dB), noise gate with hysteresis, peak limiter, live reconfiguration from dashboard
-- **DMR re-encode** (requires `md380=true`): Active when AGC or OutputGainDMR is set — ensures DMR→DMR passthrough is also normalized. Can be disabled with `DMRReEncode = false` to preserve original AMBE quality
+- **DMR re-encode** (requires `md380=true`): `DmrGainMode=reencode` enables full decode/re-encode via MD380 with AGC normalization + OutputGainDMR for DMR→DMR/YSF
 - **MD380 stream isolation**: Save/restore encoder state per stream, mutex around all MD380 calls
 
 ### Monitoring & Configuration
