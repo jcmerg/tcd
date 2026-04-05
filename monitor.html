@@ -408,19 +408,14 @@ document.getElementById('ambe_gain_db').addEventListener('input', (e) => {
 
 function updateGainInterlock() {
   const hasMd380 = document.getElementById('sw_vocoder_section').style.display !== 'none';
-  if (!hasMd380) return;  // no interlock needed without md380
+  if (!hasMd380) return;
   const reenc = document.getElementById('dmr_reencode_en').checked;
   const ambe = document.getElementById('ambe_gain_en').checked;
-  // AmbeGain section: disabled when Re-encode active
-  document.getElementById('ambe_gain_en').disabled = reenc;
-  document.getElementById('ambe_gain_db').disabled = reenc || !ambe;
-  document.querySelectorAll('#ambe_gain_en, #ambe_gain_db, #v_ambe_gain_db').forEach(
-    el => el.style.opacity = reenc ? '0.3' : '1');
-  // Re-encode section: disabled when AmbeGain active
-  document.getElementById('dmr_reencode_en').disabled = ambe;
-  document.getElementById('g_dmr_reencode').disabled = ambe || !reenc;
-  document.querySelectorAll('#dmr_reencode_en, #g_dmr_reencode, #v_dmr_reencode').forEach(
-    el => el.style.opacity = ambe ? '0.3' : '1');
+  // Sliders follow their checkbox, checkboxes always usable
+  document.getElementById('ambe_gain_db').disabled = !ambe || reenc;
+  document.getElementById('ambe_gain_db').style.opacity = (!ambe || reenc) ? '0.3' : '1';
+  document.getElementById('g_dmr_reencode').disabled = !reenc;
+  document.getElementById('g_dmr_reencode').style.opacity = !reenc ? '0.3' : '1';
 }
 
 function saveConfig() {
