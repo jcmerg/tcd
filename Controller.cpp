@@ -86,7 +86,7 @@ bool CController::Start()
 	outgain_usrp_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_usrp));
 	outgain_imbe_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_imbe));
 	outgain_m17_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_m17));
-	outgain_dmr_steps = AmbeDbToSteps(g_Conf.GetGain(EGainType::outgain_dmr));
+	outgain_dmr_steps = g_Conf.GetAmbeGainEnabled() ? g_Conf.GetAmbeGainSteps() : 0;
 	m_agc.Configure(g_Conf.GetAGCEnabled(), g_Conf.GetAGCTarget(), g_Conf.GetAGCAttack(), g_Conf.GetAGCRelease(), g_Conf.GetAGCMaxGainUp(), g_Conf.GetAGCMaxGainDown(), g_Conf.GetAGCNoiseGate());
 
 	if (InitVocoders() || tcClient.Open(g_Conf.GetAddress(), g_Conf.GetTCMods(), g_Conf.GetPort()))
@@ -128,7 +128,7 @@ void CController::ReconfigureAGC()
 	outgain_usrp_num = calcNumerator(g_Stats.config.outgain_usrp.load());
 	outgain_imbe_num = calcNumerator(g_Stats.config.outgain_imbe.load());
 	outgain_m17_num = calcNumerator(g_Stats.config.outgain_m17.load());
-	outgain_dmr_steps = AmbeDbToSteps(g_Stats.config.outgain_dmr.load());
+	outgain_dmr_steps = g_Stats.config.ambe_gain_enabled.load() ? g_Stats.config.ambe_gain_steps.load() : 0;
 	if (dstar_device) dstar_device->SetOutputGain(outgain_dstar_num);
 	if (dmrsf_device) dmrsf_device->SetOutputGain(outgain_dmr_num);
 }

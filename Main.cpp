@@ -81,6 +81,8 @@ int main(int argc, char *argv[])
 		g_Stats.config.outgain_m17.store(g_Conf.GetGain(EGainType::outgain_m17));
 		g_Stats.config.dmr_reencode_enabled.store(
 			g_Conf.GetDMRReEncodeEnabled() && g_Stats.md380.available.load(std::memory_order_relaxed));
+		g_Stats.config.ambe_gain_enabled.store(g_Conf.GetAmbeGainEnabled());
+		g_Stats.config.ambe_gain_steps.store(g_Conf.GetAmbeGainSteps());
 		g_Monitor.Start(g_Conf.GetMonitorHttpPort(), g_Conf.GetMonitorStatsPort());
 	}
 

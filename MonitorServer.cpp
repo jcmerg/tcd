@@ -157,6 +157,8 @@ std::string CMonitorServer::BuildStatsJson()
 	   << ",\"outgain_imbe\":" << g_Stats.config.outgain_imbe.load()
 	   << ",\"outgain_m17\":" << g_Stats.config.outgain_m17.load()
 	   << ",\"dmr_reencode_enabled\":" << (g_Stats.config.dmr_reencode_enabled.load() ? "true" : "false")
+	   << ",\"ambe_gain_enabled\":" << (g_Stats.config.ambe_gain_enabled.load() ? "true" : "false")
+	   << ",\"ambe_gain_steps\":" << g_Stats.config.ambe_gain_steps.load()
 	   << "}}";
 
 	return js.str();
@@ -261,6 +263,12 @@ void CMonitorServer::HandleRest(struct mg_connection *c, struct mg_http_message 
 		bool dmr_reencode;
 		if (json_get_bool(hm->body.buf, hm->body.len, "dmr_reencode", dmr_reencode))
 			g_Stats.config.dmr_reencode_enabled.store(dmr_reencode);
+		bool ambe_gain;
+		if (json_get_bool(hm->body.buf, hm->body.len, "ambe_gain", ambe_gain))
+			g_Stats.config.ambe_gain_enabled.store(ambe_gain);
+		float ambe_steps;
+		if (json_get_float(hm->body.buf, hm->body.len, "ambe_gain_steps", ambe_steps))
+			g_Stats.config.ambe_gain_steps.store((int)ambe_steps < 0 ? 0 : (int)ambe_steps > 15 ? 15 : (int)ambe_steps);
 
 		mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", "{\"status\":\"ok\"}");
 	}
@@ -467,6 +475,8 @@ bool CMonitorServer::SaveConfig(const std::string &ini_path)
 				if (key == "OutputGainIMBE")   { out << key << " = " << g_Stats.config.outgain_imbe.load() << "\n"; continue; }
 				if (key == "OutputGainM17")    { out << key << " = " << g_Stats.config.outgain_m17.load() << "\n"; continue; }
 				if (key == "DMRReEncode")      { out << key << " = " << (g_Stats.config.dmr_reencode_enabled.load() ? "true" : "false") << "\n"; continue; }
+					if (key == "AmbeGain")         { out << key << " = " << (g_Stats.config.ambe_gain_enabled.load() ? "true" : "false") << "\n"; continue; }
+					if (key == "AmbeGainSteps")    { out << key << " = " << g_Stats.config.ambe_gain_steps.load() << "\n"; continue; }
 				if (key == "AGC")               { out << key << " = " << (g_Stats.config.agc_enabled.load() ? "true" : "false") << "\n"; continue; }
 				if (key == "AGCTarget")         { out << key << " = " << g_Stats.config.agc_target.load() << "\n"; continue; }
 				if (key == "AGCAttack")         { out << key << " = " << g_Stats.config.agc_attack.load() << "\n"; continue; }

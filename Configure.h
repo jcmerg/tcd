@@ -40,6 +40,10 @@ public:
 	// DMR Re-encode
 	bool GetDMRReEncodeEnabled(void) const { return dmr_reencode_enabled; }
 
+	// AMBE bitstream gain
+	bool GetAmbeGainEnabled(void) const { return ambe_gain_enabled; }
+	int  GetAmbeGainSteps(void) const   { return ambe_gain_steps; }
+
 	// AGC
 	bool  GetAGCEnabled(void) const    { return agc_enabled; }
 	float GetAGCTarget(void) const     { return agc_target; }
@@ -67,6 +71,8 @@ private:
 	int dstar_in, dstar_out, dmr_in, dmr_out, usrp_tx, usrp_rx, dmr_reencode;
 	int outgain_dstar = 0, outgain_dmr = 0, outgain_usrp = 0, outgain_imbe = 0, outgain_m17 = 0;
 	bool dmr_reencode_enabled = false;
+	bool ambe_gain_enabled = true;
+	int  ambe_gain_steps = 5;
 	bool  agc_enabled = false;
 	float agc_target  = -16.0f;
 	float agc_attack  = 50.0f;
