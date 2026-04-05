@@ -27,7 +27,7 @@ tcd auto-detects the connected devices and selects the appropriate mode:
 
 ### 1. Mixed Mode: DV3000 + DV3003 (recommended, 2 modules)
 
-Use a DV3000 (1 D-Star channel) together with a DV3003 (1 D-Star + 2 DMR channels) for concurrent 2-module cross-mode transcoding. With `md380=true` build and `DMRReEncode = true` (default), DMR/YSF output is re-encoded via MD380 software vocoder to apply AGC-normalized audio levels. Without md380, AGC still applies to all cross-mode paths (e.g. DMR→D-Star) but DMR→DMR passes through the original AMBE unchanged.
+Use a DV3000 (1 D-Star channel) together with a DV3003 (1 D-Star + 2 DMR channels) for concurrent 2-module cross-mode transcoding. With `md380=true` build and `DMRReEncode = true`, DMR/YSF output is re-encoded via MD380 software vocoder to apply AGC-normalized audio levels. Without md380, AGC still applies to all cross-mode paths (e.g. DMR→D-Star) but DMR→DMR passes through the original AMBE unchanged.
 
 ```ini
 Modules = FS            # 2 modules (first = DV3000 D-Star, second = DV3003 mixed)
@@ -137,7 +137,7 @@ UsrpGainOut     = 0
 
 # Software vocoder (only effective with md380=true build)
 DmrReencodeGain = 0             # additional gain for MD380 DMR re-encode only
-DMRReEncode     = true          # false = skip DMR re-encode, original AMBE passthrough
+DMRReEncode     = false         # true = re-encode DMR via MD380 after AGC (requires md380=true build)
 
 # AGC (Automatic Gain Control)
 AGC             = true
@@ -214,7 +214,7 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `DMRReEncode` | `true` | Re-encode DMR/YSF output via MD380 after AGC. Without re-encode, DMR→DMR listeners receive un-normalized audio (AGC still applies to cross-mode paths like DMR→D-Star). Ignored with a warning if md380 is not compiled in. |
+| `DMRReEncode` | `false` | Re-encode DMR/YSF output via MD380 after AGC. Without re-encode, DMR→DMR listeners receive un-normalized audio (AGC still applies to cross-mode paths like DMR→D-Star). Ignored with a warning if md380 is not compiled in. |
 | `DmrReencodeGain` | `0` | Additional gain (dB) applied before MD380 re-encode. Normally 0 — use `OutputGainDMR` instead. |
 
 Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.

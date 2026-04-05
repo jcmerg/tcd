@@ -106,7 +106,7 @@ public:
 		std::atomic<int>   outgain_usrp{0};
 		std::atomic<int>   outgain_imbe{0};
 		std::atomic<int>   outgain_m17{0};
-		std::atomic<bool>  dmr_reencode_enabled{true};
+		std::atomic<bool>  dmr_reencode_enabled{false};
 	} config;
 
 	// Module name list (set at startup)

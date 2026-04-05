@@ -476,7 +476,11 @@ bool CController::InitVocoders()
 	}
 
 #ifdef WITH_MD380_VOCODER
-	md380_init();
+	if (md380_init())
+	{
+		std::cerr << "ERROR: md380_init() failed — cannot use MD380 software vocoder" << std::endl;
+		return true;
+	}
 	g_Stats.md380.available.store(true, std::memory_order_relaxed);
 	if (dmrsf_device)
 		std::cout << "md380 vocoder: DMR re-encode after AGC" << std::endl;
@@ -1325,11 +1329,12 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 					memcpy((void*)MD380_RAM, it->second.state.data(), MD380_RAM_SIZE);
 				md380_enc_streamid = sid;
 
-				// Purge stale cache entries (>30s)
+				// Purge stale (>30s) or excess cache entries
+				static constexpr size_t MD380_CACHE_MAX = 8;
 				auto cutoff = std::chrono::steady_clock::now() - std::chrono::seconds(30);
 				for (auto ci = md380_state_cache.begin(); ci != md380_state_cache.end(); )
 				{
-					if (ci->first != sid && ci->first != md380_enc_streamid && ci->second.last_used < cutoff)
+					if (ci->first != sid && (ci->second.last_used < cutoff || md380_state_cache.size() > MD380_CACHE_MAX))
 						ci = md380_state_cache.erase(ci);
 					else
 						++ci;

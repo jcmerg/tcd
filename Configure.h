@@ -66,7 +66,7 @@ private:
 	uint16_t port;
 	int dstar_in, dstar_out, dmr_in, dmr_out, usrp_tx, usrp_rx, dmr_reencode;
 	int outgain_dstar = 0, outgain_dmr = 0, outgain_usrp = 0, outgain_imbe = 0, outgain_m17 = 0;
-	bool dmr_reencode_enabled = true;
+	bool dmr_reencode_enabled = false;
 	bool  agc_enabled = false;
 	float agc_target  = -16.0f;
 	float agc_attack  = 50.0f;

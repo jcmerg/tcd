@@ -10,7 +10,7 @@ debug = false
 #
 # With md380=true:
 #   - A single DVSI device (DV3000 or DV3003) is sufficient; MD380 handles DMR/YSF
-#   - DMR re-encode after AGC is available (DMRReEncode = true in tcd.ini)
+#   - DMR re-encode after AGC is available (set DMRReEncode = true in tcd.ini)
 #
 # Without md380=true (default):
 #   - Minimum hardware: 2x AMBE3000 (DV3000), 1x AMBE3003 (DV3003), or DV3000+DV3003
