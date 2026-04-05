@@ -27,7 +27,7 @@ tcd auto-detects the connected devices and selects the appropriate mode:
 
 ### 1. Mixed Mode: DV3000 + DV3003 (recommended, 2 modules)
 
-Use a DV3000 (1 D-Star channel) together with a DV3003 (1 D-Star + 2 DMR channels) for concurrent 2-module cross-mode transcoding. With `md380=true` build and `DMRReEncode = true` (default), DMR/YSF output is re-encoded via MD380 software vocoder to apply AGC-normalized audio levels. Without md380, AGC still applies to all cross-mode paths (e.g. DMR→D-Star) but DMR→DMR passes through the original AMBE unchanged.
+Use a DV3000 (1 D-Star channel) together with a DV3003 (1 D-Star + 2 DMR channels) for concurrent 2-module cross-mode transcoding. With `md380=true` build and `DMRReEncode = true`, DMR/YSF output is re-encoded via MD380 software vocoder to apply AGC-normalized audio levels. Without md380, AGC still applies to all cross-mode paths (e.g. DMR→D-Star) but DMR→DMR passes through the original AMBE unchanged.
 
 ```ini
 Modules = FS            # 2 modules (first = DV3000 D-Star, second = DV3003 mixed)
