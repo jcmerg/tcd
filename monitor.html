@@ -167,6 +167,7 @@ function connect() {
     if (!configLoaded) {
       loadConfig(data.config);
       if (data.md380 && data.md380.available) document.getElementById('sw_vocoder_section').style.display = '';
+      updateGainInterlock();
       configLoaded = true;
     }
     render();
@@ -381,10 +382,12 @@ document.getElementById('agc_en').addEventListener('change', (e) => {
 
 document.getElementById('dmr_reencode_en').addEventListener('change', (e) => {
   fetch('/api/agc', { method: 'POST', body: JSON.stringify({ dmr_reencode: e.target.checked }) });
+  updateGainInterlock();
 });
 
 document.getElementById('ambe_gain_en').addEventListener('change', (e) => {
   fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain: e.target.checked }) });
+  updateGainInterlock();
 });
 
 document.getElementById('ambe_gain_db').addEventListener('input', (e) => {
@@ -393,6 +396,15 @@ document.getElementById('ambe_gain_db').addEventListener('input', (e) => {
   const steps = Math.round(Math.abs(db) / 2);
   fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain_steps: steps }) });
 });
+
+function updateGainInterlock() {
+  const reenc = document.getElementById('dmr_reencode_en').checked;
+  const ambe = document.getElementById('ambe_gain_en').checked;
+  document.getElementById('ambe_gain_db').disabled = reenc;
+  document.getElementById('ambe_gain_db').style.opacity = reenc ? '0.3' : '1';
+  document.getElementById('g_dmr_reencode').disabled = ambe && !reenc;
+  document.getElementById('g_dmr_reencode').style.opacity = (ambe && !reenc) ? '0.3' : '1';
+}
 
 function saveConfig() {
   document.getElementById('save_status').textContent = 'saving...';
