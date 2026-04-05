@@ -259,6 +259,8 @@ bool CConfigure::ReadData(const std::string &path)
 		std::cout << "DMRReEncode = false (DMR passthrough, no re-encode after AGC)" << std::endl;
 	if (ambe_gain_enabled)
 		std::cout << "AmbeGain = enabled, " << ambe_gain_db << " dB (b2 bitstream gain for DMR/YSF)" << std::endl;
+	if (dmr_reencode_enabled && ambe_gain_enabled)
+		std::cerr << "Warning: both DMRReEncode and AmbeGain are enabled. DMR Re-encode takes precedence; AmbeGain will only apply when Re-encode is not active." << std::endl;
 	if (agc_enabled)
 		std::cout << "AGC = enabled, Target=" << agc_target << "dBFS, Attack=" << agc_attack << "ms, Release=" << agc_release << "ms, Up=+" << agc_maxgain_up << "dB, Down=-" << agc_maxgain_down << "dB" << std::endl;
 	else
