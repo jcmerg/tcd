@@ -127,7 +127,7 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
       <div class="config-row"><label>USRP Transmit</label><input type="range" min="-40" max="40" id="g_usrp_tx"><span class="val" id="v_usrp_tx">0</span></div>
       <h2 style="font-size:13px">AMBE2+ Gain</h2>
       <div class="config-row"><label>Bitstream Gain</label><input type="checkbox" id="ambe_gain_en" checked></div>
-      <div class="config-row"><label>Steps (0-15)</label><input type="range" min="0" max="15" id="ambe_gain_steps"><span class="val" id="v_ambe_gain_steps">5</span></div>
+      <div class="config-row"><label>Gain (dB)</label><input type="range" min="-30" max="0" id="ambe_gain_db"><span class="val" id="v_ambe_gain_db">-10</span></div>
       <div id="sw_vocoder_section" style="display:none">
       <h2 style="font-size:13px">Software Vocoder</h2>
       <div class="config-row"><label>DMR Re-encode</label><input type="checkbox" id="dmr_reencode_en" checked></div>
@@ -327,8 +327,9 @@ function loadConfig(cfg) {
   });
   document.getElementById('dmr_reencode_en').checked = cfg.dmr_reencode_enabled;
   document.getElementById('ambe_gain_en').checked = cfg.ambe_gain_enabled;
-  document.getElementById('ambe_gain_steps').value = cfg.ambe_gain_steps;
-  document.getElementById('v_ambe_gain_steps').textContent = cfg.ambe_gain_steps;
+  const ambeDb = -(cfg.ambe_gain_steps * 2);
+  document.getElementById('ambe_gain_db').value = ambeDb;
+  document.getElementById('v_ambe_gain_db').textContent = ambeDb;
   document.getElementById('agc_en').checked = cfg.agc_enabled;
   document.getElementById('agc_target').value = cfg.agc_target;
   document.getElementById('v_agc_target').textContent = cfg.agc_target;
@@ -386,9 +387,11 @@ document.getElementById('ambe_gain_en').addEventListener('change', (e) => {
   fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain: e.target.checked }) });
 });
 
-document.getElementById('ambe_gain_steps').addEventListener('input', (e) => {
-  document.getElementById('v_ambe_gain_steps').textContent = e.target.value;
-  fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain_steps: parseInt(e.target.value) }) });
+document.getElementById('ambe_gain_db').addEventListener('input', (e) => {
+  const db = parseInt(e.target.value);
+  document.getElementById('v_ambe_gain_db').textContent = db;
+  const steps = Math.round(Math.abs(db) / 2);
+  fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain_steps: steps }) });
 });
 
 function saveConfig() {
