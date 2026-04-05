@@ -493,8 +493,8 @@ bool CDVDevice::ConfigureVocoder(uint8_t pkt_ch, Encoding type, int8_t in_gain, 
 		return true;
 	};
 
-	// DV3003 D-Star channels need companding disabled
-	if (Edvtype::dv3003 == devtype && Encoding::dstar == type)
+	// DV3003 defaults to companding ON (CP_ENABLE pullup) — force linear PCM for all channels
+	if (Edvtype::dv3003 == devtype)
 	{
 		SDV_Packet compandPkt, compandResp;
 		compandPkt.start_byte = PKT_HEADER;

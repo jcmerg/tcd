@@ -260,8 +260,7 @@ void CMonitorServer::HandleRest(struct mg_connection *c, struct mg_http_message 
 			g_Stats.config.agc_noisegate.store(noisegate);
 		bool dmr_reencode;
 		if (json_get_bool(hm->body.buf, hm->body.len, "dmr_reencode", dmr_reencode))
-			g_Stats.config.dmr_reencode_enabled.store(
-				dmr_reencode && g_Stats.md380.available.load(std::memory_order_relaxed));
+			g_Stats.config.dmr_reencode_enabled.store(dmr_reencode);
 
 		mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", "{\"status\":\"ok\"}");
 	}
@@ -475,7 +474,7 @@ bool CMonitorServer::SaveConfig(const std::string &ini_path)
 				if (key == "AGCMaxGainUp")     { out << key << " = " << g_Stats.config.agc_maxgain_up.load() << "\n"; continue; }
 				if (key == "AGCMaxGainDown")   { out << key << " = " << g_Stats.config.agc_maxgain_down.load() << "\n"; continue; }
 				}
-			}
+		}
 		out << line << "\n";
 	}
 	in.close();
