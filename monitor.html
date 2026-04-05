@@ -15,6 +15,7 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
   .flow-row { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .config-row label { width: 100px; font-size: 12px; }
   .config-row input[type=range] { max-width: 150px; }
+  .agc-info { flex-wrap: wrap; }
 }
 .card { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 12px; min-width: 0; }
 .card.active { border-color: #4fc3f7; }
@@ -254,7 +255,7 @@ function render() {
       ${vuBar('Pre-AGC', m.rms_in, m.peak_in)}
       ${vuBar('Post-AGC', m.rms_out, m.peak_out)}
       <div class="agc-info">
-        <span class="agc-item">AGC: <span>${data.config.agc_enabled ? (m.agc_gate ? 'Gate' : (m.agc_gain > 0 ? '+' : '') + m.agc_gain.toFixed(1) + ' dB') : 'off'}</span></span>
+        <span class="agc-item">AGC: <span>${data.config.agc_enabled ? (m.agc_gate ? 'Gate' : ((m.agc_gain >= 0 ? '+' : '') + m.agc_gain.toFixed(1)).padStart(5, '\u2007') + '\u2007dB') : 'off'}</span></span>
         <span class="agc-item">Pkts: <span>${m.pkts_in}</span> in / <span>${m.pkts_out}</span> out</span>
       </div>
     </div>`;
