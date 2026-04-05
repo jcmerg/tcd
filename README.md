@@ -4,7 +4,7 @@ Fork of [n7tae/tcd](https://github.com/n7tae/tcd) with bug fixes and usability i
 
 ## Overview
 
-tcd is a hybrid transcoder for the [URF reflector](https://github.com/jcmerg/urfd). It bridges between hardware-based vocoders (DVSI AMBE) and software-based vocoders (Codec2 for M17, IMBE for P25, MD380 for DMR/YSF).
+tcd is a hybrid transcoder for the [URF reflector](https://github.com/jcmerg/urfd). It bridges between hardware-based vocoders (DVSI AMBE) and software-based vocoders (Codec2 for M17, IMBE for P25, and optionally MD380 for DMR/YSF).
 
 ## Requirements
 
@@ -27,7 +27,7 @@ tcd auto-detects the connected devices and selects the appropriate mode:
 
 ### 1. Mixed Mode: DV3000 + DV3003 (recommended, 2 modules)
 
-Use a DV3000 (1 D-Star channel) together with a DV3003 (1 D-Star + 2 DMR channels) for concurrent 2-module cross-mode transcoding. When AGC is active and `DMRReEncode = true` (default), DMR/YSF output is re-encoded via MD380 software vocoder to apply normalized audio levels.
+Use a DV3000 (1 D-Star channel) together with a DV3003 (1 D-Star + 2 DMR channels) for concurrent 2-module cross-mode transcoding. With `md380=true` build and `DMRReEncode = true` (default), DMR/YSF output is re-encoded via MD380 software vocoder to apply AGC-normalized audio levels. Without md380, AGC still applies to all cross-mode paths (e.g. DMR→D-Star) but DMR→DMR passes through the original AMBE unchanged.
 
 ```ini
 Modules = FS            # 2 modules (first = DV3000 D-Star, second = DV3003 mixed)
@@ -54,7 +54,7 @@ DeviceSerial = DQ015SBR
 
 ### 3. Two Same-Type Devices (1-3 modules)
 
-Two DV3000s (1 module) or two DV3003s (up to 3 modules). One device handles D-Star, the other DMR/YSF.
+Two DV3000s (1 module) or two DV3003s (up to 3 modules). One device handles D-Star, the other DMR/YSF. With `md380=true` build, DMR re-encode after AGC is available (same as Mixed Mode).
 
 ```ini
 Modules = AFS           # up to 3 with DV3003 pair
@@ -135,7 +135,7 @@ DmrGainOut      = 0
 UsrpGainIn      = 0
 UsrpGainOut     = 0
 
-# Software vocoder
+# Software vocoder (only effective with md380=true build)
 DmrReencodeGain = 0             # additional gain for MD380 DMR re-encode only
 DMRReEncode     = true          # false = skip DMR re-encode, original AMBE passthrough
 
@@ -209,7 +209,13 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 | `AGCMaxGainUp` | `20` | Maximum amplification in dB. Limits noise boost on quiet input. |
 | `AGCMaxGainDown` | `24` | Maximum attenuation in dB. Limits reduction on loud input. |
 | `AGCNoiseGate` | `-55` | Noise gate threshold in dBFS. Below this level, gain is frozen. |
-| `DMRReEncode` | `true` | Enable DMR/YSF re-encode via MD380 after AGC. **Requires `md380=true` build** — ignored (with a warning) otherwise. This is the primary reason for re-encoding: without it, DMR/YSF→DMR/YSF listeners receive un-normalized audio. When `false`, original AMBE passes through unchanged (AGC still applies to all cross-mode paths). |
+
+#### DMR Re-encode (requires `md380=true` build)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `DMRReEncode` | `true` | Re-encode DMR/YSF output via MD380 after AGC. Without re-encode, DMR→DMR listeners receive un-normalized audio (AGC still applies to cross-mode paths like DMR→D-Star). Ignored with a warning if md380 is not compiled in. |
+| `DmrReencodeGain` | `0` | Additional gain (dB) applied before MD380 re-encode. Normally 0 — use `OutputGainDMR` instead. |
 
 Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.
 
@@ -307,7 +313,7 @@ sudo journalctl -u tcd -f          # follow logs
 ### Audio Processing
 - **Per-codec output gains**: Independent post-AGC gains for D-Star, M17/Codec2, DMR/YSF, P25/NXDN, USRP — applied in encode functions and DVSI FeedDevice (shared buffer never modified)
 - **AGC v3**: Sliding RMS window (60ms), per-stream speaker tracking, gate-with-decay to speaker average, fast post-gate release (5x/5 frames), asymmetric limits (up to 40dB), noise gate with hysteresis, peak limiter, live reconfiguration from dashboard
-- **DMR re-encode**: Active when AGC or OutputGainDMR is set — ensures DMR→DMR passthrough is also normalized. Can be disabled with `DMRReEncode = false` to preserve original AMBE quality
+- **DMR re-encode** (requires `md380=true`): Active when AGC or OutputGainDMR is set — ensures DMR→DMR passthrough is also normalized. Can be disabled with `DMRReEncode = false` to preserve original AMBE quality
 - **MD380 stream isolation**: Save/restore encoder state per stream, mutex around all MD380 calls
 
 ### Monitoring & Configuration

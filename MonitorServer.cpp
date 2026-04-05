@@ -472,9 +472,9 @@ bool CMonitorServer::SaveConfig(const std::string &ini_path)
 				if (key == "AGCAttack")         { out << key << " = " << g_Stats.config.agc_attack.load() << "\n"; continue; }
 				if (key == "AGCRelease")        { out << key << " = " << g_Stats.config.agc_release.load() << "\n"; continue; }
 				if (key == "AGCMaxGainUp")     { out << key << " = " << g_Stats.config.agc_maxgain_up.load() << "\n"; continue; }
-			if (key == "AGCMaxGainDown")   { out << key << " = " << g_Stats.config.agc_maxgain_down.load() << "\n"; continue; }
+				if (key == "AGCMaxGainDown")   { out << key << " = " << g_Stats.config.agc_maxgain_down.load() << "\n"; continue; }
+				}
 			}
-		}
 		out << line << "\n";
 	}
 	in.close();
