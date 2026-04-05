@@ -492,6 +492,7 @@ bool CController::InitVocoders()
 		std::cerr << "WARNING: DMRReEncode is enabled in config but md380_vocoder is not compiled in." << std::endl;
 		std::cerr << "         Re-encoding will be skipped. Build with md380=true to enable it." << std::endl;
 	}
+	g_Stats.config.dmr_reencode_enabled.store(false, std::memory_order_relaxed);
 #endif
 
 	dstar_device->Start();

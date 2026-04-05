@@ -260,7 +260,8 @@ void CMonitorServer::HandleRest(struct mg_connection *c, struct mg_http_message 
 			g_Stats.config.agc_noisegate.store(noisegate);
 		bool dmr_reencode;
 		if (json_get_bool(hm->body.buf, hm->body.len, "dmr_reencode", dmr_reencode))
-			g_Stats.config.dmr_reencode_enabled.store(dmr_reencode);
+			g_Stats.config.dmr_reencode_enabled.store(
+				dmr_reencode && g_Stats.md380.available.load(std::memory_order_relaxed));
 
 		mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", "{\"status\":\"ok\"}");
 	}
