@@ -1,0 +1,388 @@
+// Auto-generated from monitor.html — do not edit
+#include <cstddef>
+
+extern const char monitor_html[] = R"RAWHTML(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCD Monitor</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Consolas', 'Monaco', monospace; background: #1a1a2e; color: #e0e0e0; padding: 16px; }
+h1 { color: #4fc3f7; font-size: 20px; margin-bottom: 12px; }
+h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 800px) {
+  .grid { grid-template-columns: 1fr; }
+  .flow-row { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .config-row label { width: 100px; font-size: 12px; }
+  .config-row input[type=range] { max-width: 150px; }
+}
+.card { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 12px; }
+.card.active { border-color: #4fc3f7; }
+.module-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.module-letter { font-size: 24px; font-weight: bold; color: #4fc3f7; }
+.codec-badge { background: #0f3460; padding: 2px 8px; border-radius: 4px; font-size: 12px; color: #81d4fa; }
+.codec-badge.none { opacity: 0.3; }
+
+/* VU Meters */
+.vu-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; }
+.vu-label { flex: 0 0 60px; text-align: right; color: #999; white-space: nowrap; }
+.vu-bar-bg { flex: 1; height: 14px; background: #0a0a1a; border-radius: 3px; position: relative; overflow: hidden; min-width: 0; }
+.vu-bar { height: 100%; border-radius: 3px; transition: width 0.15s ease-out; min-width: 1px; }
+.vu-bar.green { background: linear-gradient(90deg, #2e7d32, #4caf50); }
+.vu-bar.yellow { background: linear-gradient(90deg, #f9a825, #ffeb3b); }
+.vu-bar.red { background: linear-gradient(90deg, #c62828, #f44336); }
+.vu-peak { position: absolute; top: 0; height: 100%; width: 2px; background: #fff; opacity: 0.7; }
+.vu-val { flex: 0 0 58px; font-size: 11px; color: #aaa; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Signal flow diagram */
+.flow { margin: 8px 0; padding: 8px; background: #0a0a1a; border-radius: 6px; font-size: 12px; }
+.flow-row { display: flex; align-items: center; gap: 4px; margin: 3px 0; }
+.flow-node { padding: 2px 6px; border-radius: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.flow-src { background: #1b5e20; color: #a5d6a7; }
+.flow-gain { background: #4a148c; color: #ce93d8; }
+.flow-agc { background: #e65100; color: #ffcc80; min-width: 105px; }
+.flow-pcm { background: #01579b; color: #81d4fa; flex: 0 0 90px; overflow: hidden; }
+.flow-dst { background: #b71c1c; color: #ef9a9a; }
+.flow-arrow { color: #555; flex-shrink: 0; }
+.flow-level { color: #ffeb3b; font-weight: bold; }
+
+/* AGC display */
+.agc-info { display: flex; gap: 16px; font-size: 12px; margin: 4px 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.agc-item { color: #aaa; }
+.agc-item span { color: #ffcc80; font-weight: bold; }
+.agc-gate { color: #f44336; font-weight: bold; }
+
+/* Devices */
+.device { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; }
+.device-dot { width: 10px; height: 10px; border-radius: 50%; }
+.device-dot.online { background: #4caf50; }
+.device-dot.active { background: #2196f3; box-shadow: 0 0 6px #2196f3; }
+.device-dot.offline { background: #f44336; }
+.device-info { color: #aaa; }
+.device-buf { color: #81d4fa; }
+
+/* Reflector status */
+.ref-status { display: flex; gap: 16px; align-items: center; font-size: 13px; padding: 6px 0; }
+.ref-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.ref-dot.ok { background: #4caf50; }
+.ref-dot.err { background: #f44336; }
+
+/* Config panel */
+.config-section { margin-top: 16px; }
+.config-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; }
+.config-row label { width: 130px; color: #aaa; }
+.config-row input[type=range] { flex: 1; max-width: 200px; accent-color: #4fc3f7; }
+.config-row .val { width: 50px; color: #81d4fa; text-align: right; }
+.config-row input[type=checkbox] { accent-color: #4fc3f7; }
+.btn { background: #0f3460; border: 1px solid #4fc3f7; color: #4fc3f7; padding: 6px 16px;
+       border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 13px; }
+.btn:hover { background: #1a4a7a; }
+
+/* Connection indicator */
+.conn { position: fixed; top: 8px; right: 16px; font-size: 12px; padding: 4px 10px;
+        border-radius: 4px; }
+.conn.ok { background: #1b5e20; color: #a5d6a7; }
+.conn.err { background: #b71c1c; color: #ef9a9a; }
+
+.footer { margin-top: 16px; font-size: 11px; color: #555; text-align: center; }
+</style>
+</head>
+<body>
+<h1>TCD Transcoder Monitor</h1>
+<div class="conn" id="conn">connecting...</div>
+
+<div id="modules"></div>
+
+<div class="grid" style="margin-top:12px">
+<div class="card">
+  <h2>DVSI Devices</h2>
+  <div id="devices">-</div>
+</div>
+<div class="card">
+  <h2>Reflector</h2>
+  <div id="reflector">-</div>
+</div>
+</div>
+
+<div class="card config-section">
+  <h2>Configuration</h2>
+  <div class="grid">
+    <div>
+      <h2 style="font-size:13px">Output Gain (post-AGC)</h2>
+      <div class="config-row"><label>D-Star Output</label><input type="range" min="-30" max="10" id="og_dstar"><span class="val" id="v_og_dstar">0</span></div>
+      <div class="config-row"><label>M17 Output</label><input type="range" min="-30" max="10" id="og_m17"><span class="val" id="v_og_m17">0</span></div>
+      <div class="config-row"><label>DMR/YSF Output</label><input type="range" min="-30" max="10" id="og_dmr"><span class="val" id="v_og_dmr">0</span></div>
+      <div class="config-row"><label>P25/NXDN Output</label><input type="range" min="-30" max="10" id="og_imbe"><span class="val" id="v_og_imbe">0</span></div>
+      <div class="config-row"><label>USRP/SVX Output</label><input type="range" min="-30" max="10" id="og_usrp"><span class="val" id="v_og_usrp">0</span></div>
+      <h2 style="font-size:13px">DVSI Hardware</h2>
+      <div class="config-row"><label>D-Star DVSI In</label><input type="range" min="-40" max="40" id="g_dstar_in"><span class="val" id="v_dstar_in">0</span></div>
+      <div class="config-row"><label>D-Star DVSI Out</label><input type="range" min="-40" max="40" id="g_dstar_out"><span class="val" id="v_dstar_out">0</span></div>
+      <div class="config-row"><label>DMR DVSI In</label><input type="range" min="-40" max="40" id="g_dmr_in"><span class="val" id="v_dmr_in">0</span></div>
+      <div class="config-row"><label>DMR DVSI Out</label><input type="range" min="-40" max="40" id="g_dmr_out"><span class="val" id="v_dmr_out">0</span></div>
+      <h2 style="font-size:13px">USRP / SVX</h2>
+      <div class="config-row"><label>USRP Receive</label><input type="range" min="-40" max="40" id="g_usrp_rx"><span class="val" id="v_usrp_rx">0</span></div>
+      <div class="config-row"><label>USRP Transmit</label><input type="range" min="-40" max="40" id="g_usrp_tx"><span class="val" id="v_usrp_tx">0</span></div>
+      <h2 style="font-size:13px">Software Vocoder</h2>
+      <div class="config-row"><label>DMR Re-encode</label><input type="checkbox" id="dmr_reencode_en" checked></div>
+      <div class="config-row"><label>DMR Re-enc Gain</label><input type="range" min="-40" max="40" id="g_dmr_reencode"><span class="val" id="v_dmr_reencode">0</span></div>
+    </div>
+    <div>
+      <h2 style="font-size:13px">AGC</h2>
+      <div class="config-row"><label>Enabled</label><input type="checkbox" id="agc_en"></div>
+      <div class="config-row"><label>Target (dBFS)</label><input type="range" min="-40" max="0" id="agc_target"><span class="val" id="v_agc_target">-16</span></div>
+      <div class="config-row"><label>Attack (ms)</label><input type="range" min="5" max="200" id="agc_attack"><span class="val" id="v_agc_attack">50</span></div>
+      <div class="config-row"><label>Release (ms)</label><input type="range" min="50" max="2000" id="agc_release"><span class="val" id="v_agc_release">500</span></div>
+      <div class="config-row"><label>Max Gain Up (dB)</label><input type="range" min="1" max="40" id="agc_maxgain_up"><span class="val" id="v_agc_maxgain_up">20</span></div>
+      <div class="config-row"><label>Max Gain Down (dB)</label><input type="range" min="1" max="40" id="agc_maxgain_down"><span class="val" id="v_agc_maxgain_down">24</span></div>
+    </div>
+  </div>
+  <div style="margin-top:12px;text-align:right">
+    <button class="btn" id="btn_save" onclick="saveConfig()">Save to INI</button>
+    <span id="save_status" style="margin-left:8px;font-size:12px;color:#aaa"></span>
+  </div>
+</div>
+
+<div class="footer">TCD Monitor &mdash; Hybrid Transcoder Dashboard</div>
+
+<script>
+let ws, data = null, configLoaded = false;
+
+function connect() {
+  const loc = window.location;
+  const url = 'ws://' + loc.hostname + ':' + loc.port + '/ws';
+  ws = new WebSocket(url);
+  ws.onopen = () => { document.getElementById('conn').className = 'conn ok'; document.getElementById('conn').textContent = 'connected'; };
+  ws.onclose = () => { document.getElementById('conn').className = 'conn err'; document.getElementById('conn').textContent = 'disconnected'; setTimeout(connect, 2000); };
+  ws.onerror = () => ws.close();
+  ws.onmessage = (e) => {
+    data = JSON.parse(e.data);
+    if (!configLoaded) { loadConfig(data.config); configLoaded = true; }
+    render();
+  };
+}
+
+function dbToWidth(db) {
+  // -100 dBFS = 0%, 0 dBFS = 100%
+  return Math.max(0, Math.min(100, (db + 60) / 60 * 100));
+}
+
+function vuColor(db) {
+  if (db > -6) return 'red';
+  if (db > -18) return 'yellow';
+  return 'green';
+}
+
+function vuBar(label, rms, peak) {
+  const w = dbToWidth(rms);
+  const pw = dbToWidth(peak);
+  return `<div class="vu-row">
+    <span class="vu-label">${label}</span>
+    <div class="vu-bar-bg">
+      <div class="vu-bar ${vuColor(rms)}" style="width:${w}%"></div>
+      <div class="vu-peak" style="left:${pw}%"></div>
+    </div>
+    <span class="vu-val">${rms > -99 ? rms.toFixed(1) : '-inf'} dB</span>
+  </div>`;
+}
+
+function flowDiagram(mod, m, cfg) {
+  const codec = m.codec_in;
+  if (codec === 'none') return '<div class="flow" style="color:#555">idle</div>';
+  const cl = codec.toLowerCase();
+
+  const ri = m.rms_in, ro = m.rms_out;
+  const riStr = ri > -99 ? (ri.toFixed(0) + 'dB').padStart(6) : '  -inf';
+  const roStr = ro > -99 ? (ro.toFixed(0) + 'dB').padStart(6) : '  -inf';
+
+  // Determine gain for this codec direction
+  let gainIn = 0, gainLabel = '';
+  if (cl.includes('star')) { gainIn = cfg.gain_dstar_in; gainLabel = 'DStarIn'; }
+  else if (cl.includes('dmr')) { gainIn = cfg.gain_dmr_in; gainLabel = 'DmrIn'; }
+  else if (cl === 'usrp') { gainIn = cfg.gain_usrp_rx; gainLabel = 'UsrpRx'; }
+  else if (cl === 'svx') { gainLabel = 'SVX'; }
+  else if (cl.includes('p25')) { gainLabel = codec; }
+  else if (cl.includes('codec2')) { gainLabel = codec; }
+
+  const agcVal = (m.agc_gain >= 0 ? '+' : '') + m.agc_gain.toFixed(1);
+  const agcStr = cfg.agc_enabled ? (m.agc_gate ? 'AGC GATE' : `AGC ${agcVal.padStart(6)}dB`) : 'no AGC';
+  const gateStr = '';
+
+  // Build output targets
+  let targets = [];
+  if (!cl.includes('star')) targets.push('D-Star');
+  if (!cl.includes('dmr')) targets.push('DMR/YSF');
+  if (!cl.includes('codec2')) targets.push('M17');
+  if (!cl.includes('p25')) targets.push('P25/NXDN');
+  if (cl !== 'usrp') targets.push('USRP');
+  if (cl !== 'svx') targets.push('SVX');
+
+  return `<div class="flow">
+    <div class="flow-row">
+      <span class="flow-node flow-src">${codec}</span>
+      <span class="flow-arrow">&rarr;</span>
+      ${gainIn !== 0 ? `<span class="flow-node flow-gain">${gainLabel} ${gainIn > 0 ? '+' : ''}${gainIn}dB</span><span class="flow-arrow">&rarr;</span>` : ''}
+      <span class="flow-node flow-pcm">PCM <span class="flow-level">${riStr}</span></span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-node flow-agc">${agcStr}${gateStr}</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-node flow-pcm">PCM <span class="flow-level">${roStr}</span></span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-node flow-dst">${targets.join(', ')}</span>
+    </div>
+  </div>`;
+}
+
+function render() {
+  if (!data) return;
+
+  let html = '<div class="grid">';
+  for (const [mod, m] of Object.entries(data.modules)) {
+    const active = m.codec_in !== 'none' && m.idle < 2;
+    html += `<div class="card ${active ? 'active' : ''}">
+      <div class="module-header">
+        <span class="module-letter">Module ${mod}</span>
+        <span class="codec-badge ${m.codec_in === 'none' ? 'none' : ''}">${m.codec_in}</span>
+      </div>
+      ${flowDiagram(mod, m, data.config)}
+      ${vuBar('Pre-AGC', m.rms_in, m.peak_in)}
+      ${vuBar('Post-AGC', m.rms_out, m.peak_out)}
+      <div class="agc-info">
+        <span class="agc-item">AGC: <span>${data.config.agc_enabled ? (m.agc_gate ? 'Gate' : (m.agc_gain > 0 ? '+' : '') + m.agc_gain.toFixed(1) + ' dB') : 'off'}</span></span>
+        <span class="agc-item">Pkts: <span>${m.pkts_in}</span> in / <span>${m.pkts_out}</span> out</span>
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+  document.getElementById('modules').innerHTML = html;
+
+  // Devices
+  let dhtml = '';
+  for (const d of data.devices) {
+    const activeChs = d.channels ? d.channels.filter(c => c.module).length : 0;
+    const totalChs = d.type === 'DV3003' ? 3 : 1;
+    const dotClass = !d.online ? 'offline' : activeChs > 0 ? 'active' : 'online';
+    let chInfo = '';
+    if (d.channels) {
+      const mods = d.channels.filter(c => c.module).map(c => c.module);
+      if (mods.length > 0) chInfo = ` <span style="color:#2196f3">${mods.join(',')}</span>`;
+    }
+    dhtml += `<div class="device">
+      <div class="device-dot ${dotClass}"></div>
+      <strong>${d.serial}</strong>
+      <span class="device-info">${d.type} [${d.role || '?'}]</span>
+      <span class="device-buf">slots: ${activeChs}/${totalChs} buf: ${d.buf_depth}</span>${chInfo}
+      ${d.errors > 0 ? `<span style="color:#f44336">err: ${d.errors}</span>` : ''}
+    </div>`;
+  }
+  // md380 software vocoder
+  if (data.md380 && data.md380.available) {
+    const m = data.md380;
+    const active = m.active_module && m.active_module.length > 0;
+    const dotClass = active ? 'active' : 'online';
+    dhtml += `<div class="device">
+      <div class="device-dot ${dotClass}"></div>
+      <strong>MD380</strong>
+      <span class="device-info">Software [dmr]</span>
+      <span class="device-buf">re-enc: ${m.reencode_active ? 'ON' : 'off'} cache: ${m.cached_streams}</span>
+      ${active ? `<span style="color:#2196f3">${m.active_module}</span>` : ''}
+      <span style="color:#888;font-size:11px">enc:${m.encodes} dec:${m.decodes} re:${m.reencodes}</span>
+    </div>`;
+  }
+  document.getElementById('devices').innerHTML = dhtml || '<span style="color:#555">no devices</span>';
+
+  // Reflector
+  const r = data.reflector;
+  document.getElementById('reflector').innerHTML = `<div class="ref-status">
+    <span class="ref-dot ${r.connected ? 'ok' : 'err'}"></span>
+    ${r.connected ? 'Connected' : 'Disconnected'}
+    <span style="color:#aaa">RX: ${r.pkts_rx} / TX: ${r.pkts_tx}</span>
+  </div>`;
+}
+
+// Config sliders
+const gainKeys = ['dstar_in','dstar_out','dmr_in','dmr_out','usrp_rx','usrp_tx','dmr_reencode'];
+const outgainKeys = ['outgain_dstar','outgain_m17','outgain_dmr','outgain_imbe','outgain_usrp'];
+
+function loadConfig(cfg) {
+  gainKeys.forEach(k => {
+    const el = document.getElementById('g_' + k);
+    if (el) { el.value = cfg['gain_' + k]; document.getElementById('v_' + k).textContent = cfg['gain_' + k]; }
+  });
+  outgainKeys.forEach(k => {
+    const short_k = k.replace('outgain_','');
+    const el = document.getElementById('og_' + short_k);
+    if (el && cfg[k] !== undefined) { el.value = cfg[k]; document.getElementById('v_og_' + short_k).textContent = cfg[k]; }
+  });
+  document.getElementById('dmr_reencode_en').checked = cfg.dmr_reencode_enabled;
+  document.getElementById('agc_en').checked = cfg.agc_enabled;
+  document.getElementById('agc_target').value = cfg.agc_target;
+  document.getElementById('v_agc_target').textContent = cfg.agc_target;
+  document.getElementById('agc_attack').value = cfg.agc_attack;
+  document.getElementById('v_agc_attack').textContent = cfg.agc_attack;
+  document.getElementById('agc_release').value = cfg.agc_release;
+  document.getElementById('v_agc_release').textContent = cfg.agc_release;
+  document.getElementById('agc_maxgain_up').value = cfg.agc_maxgain_up;
+  document.getElementById('v_agc_maxgain_up').textContent = cfg.agc_maxgain_up;
+  document.getElementById('agc_maxgain_down').value = cfg.agc_maxgain_down;
+  document.getElementById('v_agc_maxgain_down').textContent = cfg.agc_maxgain_down;
+}
+
+// Send gain changes
+gainKeys.forEach(k => {
+  const el = document.getElementById('g_' + k);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    document.getElementById('v_' + k).textContent = el.value;
+    fetch('/api/gain', { method: 'POST', body: JSON.stringify({ type: k, db: parseInt(el.value) }) });
+  });
+});
+
+// Send output gain changes
+outgainKeys.forEach(k => {
+  const short_k = k.replace('outgain_','');
+  const el = document.getElementById('og_' + short_k);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    document.getElementById('v_og_' + short_k).textContent = el.value;
+    fetch('/api/gain', { method: 'POST', body: JSON.stringify({ type: k, db: parseInt(el.value) }) });
+  });
+});
+
+// Send AGC changes
+['agc_target','agc_attack','agc_release','agc_maxgain_up','agc_maxgain_down'].forEach(k => {
+  const el = document.getElementById(k);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    document.getElementById('v_' + k).textContent = el.value;
+    const key = k.replace('agc_', '');
+    fetch('/api/agc', { method: 'POST', body: JSON.stringify({ [key]: parseFloat(el.value) }) });
+  });
+});
+
+document.getElementById('agc_en').addEventListener('change', (e) => {
+  fetch('/api/agc', { method: 'POST', body: JSON.stringify({ enabled: e.target.checked }) });
+});
+
+document.getElementById('dmr_reencode_en').addEventListener('change', (e) => {
+  fetch('/api/agc', { method: 'POST', body: JSON.stringify({ dmr_reencode: e.target.checked }) });
+});
+
+function saveConfig() {
+  document.getElementById('save_status').textContent = 'saving...';
+  fetch('/api/save', { method: 'POST' })
+    .then(r => r.json())
+    .then(j => { document.getElementById('save_status').textContent = j.status === 'ok' ? 'saved!' : j.message; })
+    .catch(() => { document.getElementById('save_status').textContent = 'error'; });
+  setTimeout(() => document.getElementById('save_status').textContent = '', 3000);
+}
+
+connect();
+</script>
+</body>
+</html>
+)RAWHTML";
+
+extern const unsigned int monitor_html_len = sizeof(monitor_html) - 1;

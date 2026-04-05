@@ -36,6 +36,8 @@
 #define OUTGAIN_DMR    "OutputGainDMR"
 #define OUTGAIN_USRP   "OutputGainUSRP"
 #define OUTGAIN_IMBE   "OutputGainIMBE"
+#define OUTGAIN_M17    "OutputGainM17"
+#define DMRREENCODE_EN "DMRReEncode"
 #define MODULES        "Modules"
 #define SERVERADDRESS  "ServerAddress"
 #define PORT           "Port"
@@ -159,6 +161,10 @@ bool CConfigure::ReadData(const std::string &path)
 			outgain_usrp = getSigned(key, value);
 		else if (0 == key.compare(OUTGAIN_IMBE))
 			outgain_imbe = getSigned(key, value);
+		else if (0 == key.compare(OUTGAIN_M17))
+			outgain_m17 = getSigned(key, value);
+		else if (0 == key.compare(DMRREENCODE_EN))
+			dmr_reencode_enabled = IS_TRUE(value[0]);
 		else if (0 == key.compare(DEVICESERIAL))
 			device_serials.push_back(value);
 		else if (0 == key.compare(AGCENABLE))
@@ -242,6 +248,9 @@ bool CConfigure::ReadData(const std::string &path)
 	if (outgain_dmr != 0)   std::cout << OUTGAIN_DMR << " = " << outgain_dmr << std::endl;
 	if (outgain_usrp != 0)  std::cout << OUTGAIN_USRP << " = " << outgain_usrp << std::endl;
 	if (outgain_imbe != 0)  std::cout << OUTGAIN_IMBE << " = " << outgain_imbe << std::endl;
+	if (outgain_m17 != 0)   std::cout << OUTGAIN_M17 << " = " << outgain_m17 << std::endl;
+	if (!dmr_reencode_enabled)
+		std::cout << "DMRReEncode = false (DMR passthrough, no re-encode after AGC)" << std::endl;
 	if (agc_enabled)
 		std::cout << "AGC = enabled, Target=" << agc_target << "dBFS, Attack=" << agc_attack << "ms, Release=" << agc_release << "ms, Up=+" << agc_maxgain_up << "dB, Down=-" << agc_maxgain_down << "dB" << std::endl;
 	else
@@ -288,6 +297,7 @@ int CConfigure::GetGain(EGainType gt) const
 		case EGainType::outgain_dmr:   return outgain_dmr;
 		case EGainType::outgain_usrp:  return outgain_usrp;
 		case EGainType::outgain_imbe:  return outgain_imbe;
+		case EGainType::outgain_m17:   return outgain_m17;
 		default:                       return 0;
 	}
 }

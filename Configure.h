@@ -23,7 +23,7 @@
 #include <vector>
 #include <regex>
 
-enum class EGainType { dmrin, dmrout, dstarin, dstarout, usrptx, usrprx, dmrreencode, outgain_dstar, outgain_dmr, outgain_usrp, outgain_imbe };
+enum class EGainType { dmrin, dmrout, dstarin, dstarout, usrptx, usrprx, dmrreencode, outgain_dstar, outgain_dmr, outgain_usrp, outgain_imbe, outgain_m17 };
 
 #define IS_TRUE(a) ((a)=='t' || (a)=='T' || (a)=='1')
 
@@ -36,6 +36,9 @@ public:
 	std::string GetAddress(void) const { return address; }
 	unsigned GetPort(void) const { return port; }
 	const std::vector<std::string> &GetDeviceSerials(void) const { return device_serials; }
+
+	// DMR Re-encode
+	bool GetDMRReEncodeEnabled(void) const { return dmr_reencode_enabled; }
 
 	// AGC
 	bool  GetAGCEnabled(void) const    { return agc_enabled; }
@@ -62,7 +65,8 @@ private:
 	std::vector<std::string> device_serials;
 	uint16_t port;
 	int dstar_in, dstar_out, dmr_in, dmr_out, usrp_tx, usrp_rx, dmr_reencode;
-	int outgain_dstar = 0, outgain_dmr = 0, outgain_usrp = 0, outgain_imbe = 0;
+	int outgain_dstar = 0, outgain_dmr = 0, outgain_usrp = 0, outgain_imbe = 0, outgain_m17 = 0;
+	bool dmr_reencode_enabled = true;
 	bool  agc_enabled = false;
 	float agc_target  = -16.0f;
 	float agc_attack  = 50.0f;

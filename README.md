@@ -43,6 +43,8 @@ Modules = S
 DeviceSerial = DQ015SBR
 ```
 
+**AGC limitation**: In this mode, DMR/YSF→DMR/YSF audio is **not re-encoded** after AGC. The original AMBE data passes through unchanged because the MD380 cannot safely decode and re-encode in the same pipeline (shared encoder/decoder state). AGC still normalizes audio for all cross-mode paths (DMR→D-Star, DMR→M17, etc.). To get AGC on DMR/YSF→DMR/YSF, use a two-device configuration.
+
 ### 3. Two Same-Type Devices (1-3 modules)
 
 Two DV3000s (1 module) or two DV3003s (up to 3 modules). One device handles D-Star, the other DMR/YSF.
@@ -107,7 +109,8 @@ DeviceSerial = DQ015SBR
 DeviceSerial = DKB7FXGE
 
 # Output Gain — post-AGC, per target codec, in dB (-40 to +40)
-OutputGainDStar = 0             # D-Star + Codec2/M17 output
+OutputGainDStar = 0             # D-Star output
+OutputGainM17   = 0             # M17/Codec2 output
 OutputGainDMR   = -16           # DMR/YSF output
 OutputGainIMBE  = 0             # P25/NXDN output
 OutputGainUSRP  = 0             # USRP output
@@ -122,6 +125,7 @@ DmrGainOut      = 0
 UsrpGainIn      = 0
 UsrpGainOut     = 0
 DmrReencodeGain = 0             # additional gain for MD380 DMR re-encode only
+DMRReEncode     = true          # false = skip DMR re-encode, original AMBE passthrough
 
 # AGC (Automatic Gain Control)
 AGC             = true
@@ -157,7 +161,8 @@ Applied after AGC, independently per target codec. Use to balance level differen
 
 | Parameter | Default | Applied to |
 |-----------|---------|------------|
-| `OutputGainDStar` | `0` | D-Star DVSI encode, Codec2/M17 |
+| `OutputGainDStar` | `0` | D-Star DVSI encode |
+| `OutputGainM17` | `0` | M17/Codec2 encode |
 | `OutputGainDMR` | `0` | DMR/YSF DVSI encode, MD380 sw encode |
 | `OutputGainIMBE` | `0` | P25/NXDN (IMBE encoder) |
 | `OutputGainUSRP` | `0` | USRP output |
@@ -192,6 +197,8 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 | `AGCMaxGainUp` | `20` | Maximum amplification in dB. Limits noise boost on quiet input. |
 | `AGCMaxGainDown` | `24` | Maximum attenuation in dB. Limits reduction on loud input. |
 | `AGCNoiseGate` | `-55` | Noise gate threshold in dBFS. Below this level, gain is frozen. |
+
+| `DMRReEncode` | `true` | Enable DMR/YSF re-encode after AGC. This is the primary reason for re-encoding: without it, DMR/YSF→DMR/YSF listeners receive un-normalized audio. When `false`, original AMBE passes through (AGC applies to cross-mode only). |
 
 Note: `AGCMaxGain` (symmetric, old style) is still accepted for backwards compatibility — it sets both Up and Down to the same value.
 
@@ -289,9 +296,9 @@ sudo journalctl -u tcd -f          # follow logs
 - **SVX codec path**: Separate `ECodecType::svx` for independent SVX audio handling
 
 ### Audio Processing
-- **Per-codec output gains**: Independent post-AGC gains for D-Star, DMR/YSF, P25/NXDN, USRP — applied in encode functions and DVSI FeedDevice (shared buffer never modified)
+- **Per-codec output gains**: Independent post-AGC gains for D-Star, M17/Codec2, DMR/YSF, P25/NXDN, USRP — applied in encode functions and DVSI FeedDevice (shared buffer never modified)
 - **AGC v3**: Sliding RMS window (60ms), per-stream speaker tracking, gate-with-decay to speaker average, fast post-gate release (5x/5 frames), asymmetric limits (up to 40dB), noise gate with hysteresis, peak limiter, live reconfiguration from dashboard
-- **DMR re-encode**: Always active when AGC or OutputGainDMR is set — ensures DMR→DMR passthrough is also normalized (was bypassing AGC entirely)
+- **DMR re-encode**: Active when AGC or OutputGainDMR is set — ensures DMR→DMR passthrough is also normalized. Can be disabled with `DMRReEncode = false` to preserve original AMBE quality
 - **MD380 stream isolation**: Save/restore encoder state per stream, mutex around all MD380 calls
 
 ### Monitoring & Configuration
