@@ -35,6 +35,7 @@
 #include "Configure.h"
 #include "TcdStats.h"
 #include "StatsLogger.h"
+#include "AmbeGain.h"
 
 extern CTcdStats g_Stats;
 
@@ -73,7 +74,7 @@ static void Md380Stat(char module, std::atomic<uint32_t> &counter)
 }
 #endif
 
-CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256), outgain_dstar_num(256), outgain_dmr_num(256), outgain_usrp_num(256), outgain_imbe_num(256), outgain_m17_num(256) {}
+CController::CController() : keep_running(true), ambe_in_num(256), ambe_out_num(256), usrp_rx_num(256), usrp_tx_num(256), dmr_reencode_num(256), outgain_dstar_num(256), outgain_dmr_num(256), outgain_usrp_num(256), outgain_imbe_num(256), outgain_m17_num(256), outgain_dmr_steps(0) {}
 
 bool CController::Start()
 {
@@ -85,6 +86,7 @@ bool CController::Start()
 	outgain_usrp_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_usrp));
 	outgain_imbe_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_imbe));
 	outgain_m17_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_m17));
+	outgain_dmr_steps = AmbeDbToSteps(g_Conf.GetGain(EGainType::outgain_dmr));
 	m_agc.Configure(g_Conf.GetAGCEnabled(), g_Conf.GetAGCTarget(), g_Conf.GetAGCAttack(), g_Conf.GetAGCRelease(), g_Conf.GetAGCMaxGainUp(), g_Conf.GetAGCMaxGainDown(), g_Conf.GetAGCNoiseGate());
 
 	if (InitVocoders() || tcClient.Open(g_Conf.GetAddress(), g_Conf.GetTCMods(), g_Conf.GetPort()))
@@ -126,6 +128,7 @@ void CController::ReconfigureAGC()
 	outgain_usrp_num = calcNumerator(g_Stats.config.outgain_usrp.load());
 	outgain_imbe_num = calcNumerator(g_Stats.config.outgain_imbe.load());
 	outgain_m17_num = calcNumerator(g_Stats.config.outgain_m17.load());
+	outgain_dmr_steps = AmbeDbToSteps(g_Stats.config.outgain_dmr.load());
 	if (dstar_device) dstar_device->SetOutputGain(outgain_dstar_num);
 	if (dmrsf_device) dmrsf_device->SetOutputGain(outgain_dmr_num);
 }
@@ -1353,6 +1356,23 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 			packet->SetDMRData(ambe2);
 		}
 #endif
+		// Bitstream gain: adjust b2 (delta-gamma) in AMBE2+ frame when
+		// re-encode did not already handle the gain via PCM path
+		if (outgain_dmr_steps != 0)
+		{
+			bool reencode_handled = false;
+#ifdef WITH_MD380_VOCODER
+			reencode_handled = g_Stats.config.dmr_reencode_enabled.load(std::memory_order_relaxed) &&
+				(m_agc.IsEnabled() || outgain_dmr_num != 256 || dmr_reencode_num != 256);
+#endif
+			if (!reencode_handled)
+			{
+				uint8_t dmr_data[9];
+				memcpy(dmr_data, packet->GetDMRData(), 9);
+				AmbeAdjustGain(dmr_data, outgain_dmr_steps);
+				packet->SetDMRData(dmr_data);
+			}
+		}
 		codec2_queue.push(packet);
 		imbe_queue.push(packet);
 		usrp_queue.push(packet);
