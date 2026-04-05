@@ -125,13 +125,17 @@ h2 { color: #81d4fa; font-size: 15px; margin: 12px 0 8px; }
       <h2 style="font-size:13px">USRP / SVX</h2>
       <div class="config-row"><label>USRP Receive</label><input type="range" min="-40" max="40" id="g_usrp_rx"><span class="val" id="v_usrp_rx">0</span></div>
       <div class="config-row"><label>USRP Transmit</label><input type="range" min="-40" max="40" id="g_usrp_tx"><span class="val" id="v_usrp_tx">0</span></div>
-      <h2 style="font-size:13px">AMBE2+ Gain</h2>
-      <div class="config-row"><label>Bitstream Gain</label><input type="checkbox" id="ambe_gain_en" checked></div>
-      <div class="config-row"><label>Gain (dB)</label><input type="range" min="-30" max="0" id="ambe_gain_db"><span class="val" id="v_ambe_gain_db">-2</span></div>
-      <div id="sw_vocoder_section" style="display:none">
-      <h2 style="font-size:13px">Software Vocoder</h2>
-      <div class="config-row"><label>DMR Re-encode</label><input type="checkbox" id="dmr_reencode_en" checked></div>
-      <div class="config-row"><label>DMR Re-enc Gain</label><input type="range" min="-40" max="40" id="g_dmr_reencode"><span class="val" id="v_dmr_reencode">0</span></div>
+      <h2 style="font-size:13px">DMR/YSF Gain</h2>
+      <div class="config-row"><label>Mode</label><select id="dmr_gain_mode" style="flex:1;max-width:200px;background:#0a0a1a;color:#e0e0e0;border:1px solid #0f3460;border-radius:4px;padding:2px 4px;font-family:inherit;font-size:13px">
+        <option value="off">Off</option>
+        <option value="ambe">Bitstream (b2)</option>
+        <option value="reencode">Re-encode (MD380)</option>
+      </select></div>
+      <div id="dmr_gain_ambe" style="display:none">
+        <div class="config-row"><label>Bitstream Gain</label><input type="range" min="-30" max="0" id="ambe_gain_db"><span class="val" id="v_ambe_gain_db">-2</span></div>
+      </div>
+      <div id="dmr_gain_reencode" style="display:none">
+        <div class="config-row"><label>Re-enc Gain</label><input type="range" min="-40" max="40" id="g_dmr_reencode"><span class="val" id="v_dmr_reencode">0</span></div>
       </div>
     </div>
     <div>
@@ -166,8 +170,9 @@ function connect() {
     data = JSON.parse(e.data);
     if (!configLoaded) {
       loadConfig(data.config);
-      if (data.md380 && data.md380.available) document.getElementById('sw_vocoder_section').style.display = '';
-      updateGainInterlock();
+      if (!(data.md380 && data.md380.available))
+        document.querySelector('#dmr_gain_mode option[value="reencode"]').remove();
+      updateDmrGainMode();
       configLoaded = true;
     }
     render();
@@ -326,8 +331,10 @@ function loadConfig(cfg) {
     const el = document.getElementById('og_' + short_k);
     if (el && cfg[k] !== undefined) { el.value = cfg[k]; document.getElementById('v_og_' + short_k).textContent = cfg[k]; }
   });
-  document.getElementById('dmr_reencode_en').checked = cfg.dmr_reencode_enabled;
-  document.getElementById('ambe_gain_en').checked = cfg.ambe_gain_enabled;
+  // DMR gain mode dropdown
+  if (cfg.dmr_reencode_enabled) document.getElementById('dmr_gain_mode').value = 'reencode';
+  else if (cfg.ambe_gain_enabled) document.getElementById('dmr_gain_mode').value = 'ambe';
+  else document.getElementById('dmr_gain_mode').value = 'off';
   document.getElementById('ambe_gain_db').value = cfg.ambe_gain_db;
   document.getElementById('v_ambe_gain_db').textContent = cfg.ambe_gain_db;
   document.getElementById('agc_en').checked = cfg.agc_enabled;
@@ -379,25 +386,13 @@ document.getElementById('agc_en').addEventListener('change', (e) => {
   fetch('/api/agc', { method: 'POST', body: JSON.stringify({ enabled: e.target.checked }) });
 });
 
-document.getElementById('dmr_reencode_en').addEventListener('change', (e) => {
-  if (e.target.checked) {
-    document.getElementById('ambe_gain_en').checked = false;
-    fetch('/api/agc', { method: 'POST', body: JSON.stringify({ dmr_reencode: true, ambe_gain: false }) });
-  } else {
-    fetch('/api/agc', { method: 'POST', body: JSON.stringify({ dmr_reencode: false }) });
-  }
-  updateGainInterlock();
-});
-
-document.getElementById('ambe_gain_en').addEventListener('change', (e) => {
-  const hasMd380 = document.getElementById('sw_vocoder_section').style.display !== 'none';
-  if (e.target.checked && hasMd380) {
-    document.getElementById('dmr_reencode_en').checked = false;
-    fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain: true, dmr_reencode: false }) });
-  } else {
-    fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain: e.target.checked }) });
-  }
-  updateGainInterlock();
+document.getElementById('dmr_gain_mode').addEventListener('change', (e) => {
+  const mode = e.target.value;
+  fetch('/api/agc', { method: 'POST', body: JSON.stringify({
+    ambe_gain: mode === 'ambe',
+    dmr_reencode: mode === 'reencode'
+  })});
+  updateDmrGainMode();
 });
 
 document.getElementById('ambe_gain_db').addEventListener('input', (e) => {
@@ -406,16 +401,10 @@ document.getElementById('ambe_gain_db').addEventListener('input', (e) => {
   fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain_db: db }) });
 });
 
-function updateGainInterlock() {
-  const hasMd380 = document.getElementById('sw_vocoder_section').style.display !== 'none';
-  if (!hasMd380) return;
-  const reenc = document.getElementById('dmr_reencode_en').checked;
-  const ambe = document.getElementById('ambe_gain_en').checked;
-  // Sliders follow their checkbox, checkboxes always usable
-  document.getElementById('ambe_gain_db').disabled = !ambe || reenc;
-  document.getElementById('ambe_gain_db').style.opacity = (!ambe || reenc) ? '0.3' : '1';
-  document.getElementById('g_dmr_reencode').disabled = !reenc;
-  document.getElementById('g_dmr_reencode').style.opacity = !reenc ? '0.3' : '1';
+function updateDmrGainMode() {
+  const mode = document.getElementById('dmr_gain_mode').value;
+  document.getElementById('dmr_gain_ambe').style.display = mode === 'ambe' ? '' : 'none';
+  document.getElementById('dmr_gain_reencode').style.display = mode === 'reencode' ? '' : 'none';
 }
 
 function saveConfig() {
