@@ -86,7 +86,7 @@ bool CController::Start()
 	outgain_usrp_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_usrp));
 	outgain_imbe_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_imbe));
 	outgain_m17_num = calcNumerator(g_Conf.GetGain(EGainType::outgain_m17));
-	outgain_dmr_steps = g_Conf.GetAmbeGainEnabled() ? (int)roundf(abs(g_Conf.GetAmbeGainDb()) / 2.0f) : 0;
+	outgain_dmr_steps = (g_Conf.GetDmrGainMode() == CConfigure::EDmrGainMode::ambe) ? (int)roundf(abs(g_Conf.GetAmbeGainDb()) / 2.0f) : 0;
 	m_agc.Configure(g_Conf.GetAGCEnabled(), g_Conf.GetAGCTarget(), g_Conf.GetAGCAttack(), g_Conf.GetAGCRelease(), g_Conf.GetAGCMaxGainUp(), g_Conf.GetAGCMaxGainDown(), g_Conf.GetAGCNoiseGate());
 
 	if (InitVocoders() || tcClient.Open(g_Conf.GetAddress(), g_Conf.GetTCMods(), g_Conf.GetPort()))
@@ -128,7 +128,7 @@ void CController::ReconfigureAGC()
 	outgain_usrp_num = calcNumerator(g_Stats.config.outgain_usrp.load());
 	outgain_imbe_num = calcNumerator(g_Stats.config.outgain_imbe.load());
 	outgain_m17_num = calcNumerator(g_Stats.config.outgain_m17.load());
-	outgain_dmr_steps = g_Stats.config.ambe_gain_enabled.load() ? (int)roundf(abs(g_Stats.config.ambe_gain_db.load()) / 2.0f) : 0;
+	outgain_dmr_steps = (g_Stats.config.dmr_gain_mode.load() == 1) ? (int)roundf(abs(g_Stats.config.ambe_gain_db.load()) / 2.0f) : 0;
 	if (dstar_device) dstar_device->SetOutputGain(outgain_dstar_num);
 	if (dmrsf_device) dmrsf_device->SetOutputGain(outgain_dmr_num);
 }
@@ -490,12 +490,11 @@ bool CController::InitVocoders()
 	else
 		std::cout << "md380 vocoder: primary DMR codec" << std::endl;
 #else
-	if (g_Conf.GetDMRReEncodeEnabled())
+	if (g_Stats.config.dmr_gain_mode.load(std::memory_order_relaxed) == 2)
 	{
-		std::cerr << "WARNING: DMRReEncode is enabled in config but md380_vocoder is not compiled in." << std::endl;
-		std::cerr << "         Re-encoding will be skipped. Build with md380=true to enable it." << std::endl;
+		std::cerr << "WARNING: DmrGainMode=reencode but md380_vocoder is not compiled in. Falling back to ambe." << std::endl;
+		g_Stats.config.dmr_gain_mode.store(1, std::memory_order_relaxed);
 	}
-	g_Stats.config.dmr_reencode_enabled.store(false, std::memory_order_relaxed);
 #endif
 
 	dstar_device->Start();
@@ -603,7 +602,7 @@ void CController::ReadReflectorThread()
 				if (last > 0 && (now_ms - last) > 2000)
 					g_Stats.md380.active_module.store(' ', std::memory_order_relaxed);
 				g_Stats.md380.reencode_active.store(
-					g_Stats.config.dmr_reencode_enabled.load(std::memory_order_relaxed) &&
+					(g_Stats.config.dmr_gain_mode.load(std::memory_order_relaxed) == 2) &&
 					(m_agc.IsEnabled() || outgain_dmr_num != 256 || dmr_reencode_num != 256),
 					std::memory_order_relaxed);
 				g_Stats.md380.cached_streams.store((int)md380_state_cache.size(), std::memory_order_relaxed);
@@ -1305,7 +1304,7 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		// Always re-encode when AGC or OutputGainDMR is active, otherwise the
 		// original (un-gained) AMBE data passes through unchanged
 #ifdef WITH_MD380_VOCODER
-		if (g_Stats.config.dmr_reencode_enabled.load(std::memory_order_relaxed) &&
+		if ((g_Stats.config.dmr_gain_mode.load(std::memory_order_relaxed) == 2) &&
 		    (m_agc.IsEnabled() || outgain_dmr_num != 256 || dmr_reencode_num != 256))
 		{
 			uint8_t ambe2[9];
@@ -1362,7 +1361,7 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		{
 			bool reencode_handled = false;
 #ifdef WITH_MD380_VOCODER
-			reencode_handled = g_Stats.config.dmr_reencode_enabled.load(std::memory_order_relaxed) &&
+			reencode_handled = (g_Stats.config.dmr_gain_mode.load(std::memory_order_relaxed) == 2) &&
 				(m_agc.IsEnabled() || outgain_dmr_num != 256 || dmr_reencode_num != 256);
 #endif
 			if (!reencode_handled)

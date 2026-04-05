@@ -106,8 +106,7 @@ public:
 		std::atomic<int>   outgain_usrp{0};
 		std::atomic<int>   outgain_imbe{0};
 		std::atomic<int>   outgain_m17{0};
-		std::atomic<bool>  dmr_reencode_enabled{false};
-		std::atomic<bool>  ambe_gain_enabled{true};
+		std::atomic<int>   dmr_gain_mode{1};   // 0=off, 1=ambe, 2=reencode
 		std::atomic<int>   ambe_gain_db{-2};
 	} config;
 

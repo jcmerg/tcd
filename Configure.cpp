@@ -37,8 +37,7 @@
 #define OUTGAIN_USRP   "OutputGainUSRP"
 #define OUTGAIN_IMBE   "OutputGainIMBE"
 #define OUTGAIN_M17    "OutputGainM17"
-#define DMRREENCODE_EN "DMRReEncode"
-#define AMBEGAIN_EN    "AmbeGain"
+#define DMRGAINMODE    "DmrGainMode"
 #define AMBEGAIN_DB    "AmbeGainDb"
 #define MODULES        "Modules"
 #define SERVERADDRESS  "ServerAddress"
@@ -167,10 +166,13 @@ bool CConfigure::ReadData(const std::string &path)
 			outgain_imbe = getSigned(key, value);
 		else if (0 == key.compare(OUTGAIN_M17))
 			outgain_m17 = getSigned(key, value);
-		else if (0 == key.compare(DMRREENCODE_EN))
-			dmr_reencode_enabled = IS_TRUE(value[0]);
-		else if (0 == key.compare(AMBEGAIN_EN))
-			ambe_gain_enabled = IS_TRUE(value[0]);
+		else if (0 == key.compare(DMRGAINMODE))
+		{
+			if (value == "off")            dmr_gain_mode = EDmrGainMode::off;
+			else if (value == "ambe")      dmr_gain_mode = EDmrGainMode::ambe;
+			else if (value == "reencode")   dmr_gain_mode = EDmrGainMode::reencode;
+			else std::cerr << "Warning: unknown " << DMRGAINMODE << " '" << value << "', using 'ambe'" << std::endl;
+		}
 		else if (0 == key.compare(AMBEGAIN_DB))
 		{
 			ambe_gain_db = getSigned(key, value);
@@ -255,12 +257,13 @@ bool CConfigure::ReadData(const std::string &path)
 	if (outgain_usrp != 0)  std::cout << OUTGAIN_USRP << " = " << outgain_usrp << std::endl;
 	if (outgain_imbe != 0)  std::cout << OUTGAIN_IMBE << " = " << outgain_imbe << std::endl;
 	if (outgain_m17 != 0)   std::cout << OUTGAIN_M17 << " = " << outgain_m17 << std::endl;
-	if (!dmr_reencode_enabled)
-		std::cout << "DMRReEncode = false (DMR passthrough, no re-encode after AGC)" << std::endl;
-	if (ambe_gain_enabled)
-		std::cout << "AmbeGain = enabled, " << ambe_gain_db << " dB (b2 bitstream gain for DMR/YSF)" << std::endl;
-	if (dmr_reencode_enabled && ambe_gain_enabled)
-		std::cerr << "Warning: both DMRReEncode and AmbeGain are enabled. DMR Re-encode takes precedence; AmbeGain will only apply when Re-encode is not active." << std::endl;
+	{
+		const char *mode_str = (dmr_gain_mode == EDmrGainMode::reencode) ? "reencode" : (dmr_gain_mode == EDmrGainMode::ambe) ? "ambe" : "off";
+		std::cout << DMRGAINMODE << " = " << mode_str;
+		if (dmr_gain_mode == EDmrGainMode::ambe) std::cout << " (" << ambe_gain_db << " dB, b2 bitstream)";
+		if (dmr_gain_mode == EDmrGainMode::reencode) std::cout << " (MD380 re-encode + AGC)";
+		std::cout << std::endl;
+	}
 	if (agc_enabled)
 		std::cout << "AGC = enabled, Target=" << agc_target << "dBFS, Attack=" << agc_attack << "ms, Release=" << agc_release << "ms, Up=+" << agc_maxgain_up << "dB, Down=-" << agc_maxgain_down << "dB" << std::endl;
 	else

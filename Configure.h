@@ -37,12 +37,10 @@ public:
 	unsigned GetPort(void) const { return port; }
 	const std::vector<std::string> &GetDeviceSerials(void) const { return device_serials; }
 
-	// DMR Re-encode
-	bool GetDMRReEncodeEnabled(void) const { return dmr_reencode_enabled; }
-
-	// AMBE bitstream gain
-	bool GetAmbeGainEnabled(void) const { return ambe_gain_enabled; }
-	int  GetAmbeGainDb(void) const      { return ambe_gain_db; }
+	// DMR/YSF gain mode: off, ambe (bitstream b2), reencode (md380 PCM)
+	enum class EDmrGainMode { off, ambe, reencode };
+	EDmrGainMode GetDmrGainMode(void) const { return dmr_gain_mode; }
+	int  GetAmbeGainDb(void) const          { return ambe_gain_db; }
 
 	// AGC
 	bool  GetAGCEnabled(void) const    { return agc_enabled; }
@@ -70,8 +68,7 @@ private:
 	uint16_t port;
 	int dstar_in, dstar_out, dmr_in, dmr_out, usrp_tx, usrp_rx, dmr_reencode;
 	int outgain_dstar = 0, outgain_dmr = 0, outgain_usrp = 0, outgain_imbe = 0, outgain_m17 = 0;
-	bool dmr_reencode_enabled = false;
-	bool ambe_gain_enabled = true;
+	EDmrGainMode dmr_gain_mode = EDmrGainMode::ambe;
 	int  ambe_gain_db = -2;
 	bool  agc_enabled = false;
 	float agc_target  = -16.0f;

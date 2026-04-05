@@ -156,8 +156,7 @@ std::string CMonitorServer::BuildStatsJson()
 	   << ",\"outgain_usrp\":" << g_Stats.config.outgain_usrp.load()
 	   << ",\"outgain_imbe\":" << g_Stats.config.outgain_imbe.load()
 	   << ",\"outgain_m17\":" << g_Stats.config.outgain_m17.load()
-	   << ",\"dmr_reencode_enabled\":" << (g_Stats.config.dmr_reencode_enabled.load() ? "true" : "false")
-	   << ",\"ambe_gain_enabled\":" << (g_Stats.config.ambe_gain_enabled.load() ? "true" : "false")
+	   << ",\"dmr_gain_mode\":" << g_Stats.config.dmr_gain_mode.load()
 	   << ",\"ambe_gain_db\":" << g_Stats.config.ambe_gain_db.load()
 	   << "}}";
 
@@ -260,12 +259,9 @@ void CMonitorServer::HandleRest(struct mg_connection *c, struct mg_http_message 
 		float noisegate;
 		if (json_get_float(hm->body.buf, hm->body.len, "noisegate", noisegate))
 			g_Stats.config.agc_noisegate.store(noisegate);
-		bool dmr_reencode;
-		if (json_get_bool(hm->body.buf, hm->body.len, "dmr_reencode", dmr_reencode))
-			g_Stats.config.dmr_reencode_enabled.store(dmr_reencode);
-		bool ambe_gain;
-		if (json_get_bool(hm->body.buf, hm->body.len, "ambe_gain", ambe_gain))
-			g_Stats.config.ambe_gain_enabled.store(ambe_gain);
+		float dmr_gain_mode;
+		if (json_get_float(hm->body.buf, hm->body.len, "dmr_gain_mode", dmr_gain_mode))
+			g_Stats.config.dmr_gain_mode.store((int)dmr_gain_mode < 0 ? 0 : (int)dmr_gain_mode > 2 ? 2 : (int)dmr_gain_mode);
 		float ambe_db;
 		if (json_get_float(hm->body.buf, hm->body.len, "ambe_gain_db", ambe_db))
 			g_Stats.config.ambe_gain_db.store((int)ambe_db < -30 ? -30 : (int)ambe_db > 0 ? 0 : (int)ambe_db);
@@ -474,8 +470,7 @@ bool CMonitorServer::SaveConfig(const std::string &ini_path)
 				if (key == "OutputGainUSRP")   { out << key << " = " << g_Stats.config.outgain_usrp.load() << "\n"; continue; }
 				if (key == "OutputGainIMBE")   { out << key << " = " << g_Stats.config.outgain_imbe.load() << "\n"; continue; }
 				if (key == "OutputGainM17")    { out << key << " = " << g_Stats.config.outgain_m17.load() << "\n"; continue; }
-				if (key == "DMRReEncode")      { out << key << " = " << (g_Stats.config.dmr_reencode_enabled.load() ? "true" : "false") << "\n"; continue; }
-				if (key == "AmbeGain")         { out << key << " = " << (g_Stats.config.ambe_gain_enabled.load() ? "true" : "false") << "\n"; continue; }
+				if (key == "DmrGainMode")      { int m = g_Stats.config.dmr_gain_mode.load(); out << key << " = " << (m==2 ? "reencode" : m==1 ? "ambe" : "off") << "\n"; continue; }
 				if (key == "AmbeGainDb")       { out << key << " = " << g_Stats.config.ambe_gain_db.load() << "\n"; continue; }
 				if (key == "AGC")               { out << key << " = " << (g_Stats.config.agc_enabled.load() ? "true" : "false") << "\n"; continue; }
 				if (key == "AGCTarget")         { out << key << " = " << g_Stats.config.agc_target.load() << "\n"; continue; }

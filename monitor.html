@@ -331,10 +331,9 @@ function loadConfig(cfg) {
     const el = document.getElementById('og_' + short_k);
     if (el && cfg[k] !== undefined) { el.value = cfg[k]; document.getElementById('v_og_' + short_k).textContent = cfg[k]; }
   });
-  // DMR gain mode dropdown
-  if (cfg.dmr_reencode_enabled) document.getElementById('dmr_gain_mode').value = 'reencode';
-  else if (cfg.ambe_gain_enabled) document.getElementById('dmr_gain_mode').value = 'ambe';
-  else document.getElementById('dmr_gain_mode').value = 'off';
+  // DMR gain mode dropdown (0=off, 1=ambe, 2=reencode)
+  const modeMap = ['off', 'ambe', 'reencode'];
+  document.getElementById('dmr_gain_mode').value = modeMap[cfg.dmr_gain_mode] || 'off';
   document.getElementById('ambe_gain_db').value = cfg.ambe_gain_db;
   document.getElementById('v_ambe_gain_db').textContent = cfg.ambe_gain_db;
   document.getElementById('agc_en').checked = cfg.agc_enabled;
@@ -387,11 +386,8 @@ document.getElementById('agc_en').addEventListener('change', (e) => {
 });
 
 document.getElementById('dmr_gain_mode').addEventListener('change', (e) => {
-  const mode = e.target.value;
-  fetch('/api/agc', { method: 'POST', body: JSON.stringify({
-    ambe_gain: mode === 'ambe',
-    dmr_reencode: mode === 'reencode'
-  })});
+  const modeInt = {off: 0, ambe: 1, reencode: 2}[e.target.value] || 0;
+  fetch('/api/agc', { method: 'POST', body: JSON.stringify({ dmr_gain_mode: modeInt }) });
   updateDmrGainMode();
 });
 

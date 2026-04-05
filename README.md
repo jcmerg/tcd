@@ -43,11 +43,11 @@ Channel assignment (automatic):
 
 **DMR/YSF gain options:**
 
-| Build | DMR→DMR/YSF gain | AGC on DMR→DMR/YSF | Config |
-|-------|-------------------|--------------------|--------|
-| Without md380 | AmbeGain (bitstream b2) | No | `AmbeGain=true`, `AmbeGainDb=-2` |
-| With md380, `DMRReEncode=true` | OutputGainDMR (PCM) | Yes | `OutputGainDMR=-16`, `DMRReEncode=true` |
-| With md380, `DMRReEncode=false` | AmbeGain (bitstream b2) | No | `AmbeGain=true`, `AmbeGainDb=-2` |
+| Build | DmrGainMode | DMR→DMR/YSF gain | AGC on DMR→DMR/YSF |
+|-------|-------------|-------------------|--------------------|
+| Without md380 | `ambe` | Bitstream b2 (`AmbeGainDb=-2`) | No |
+| With md380 | `reencode` | PCM (`OutputGainDMR=-16`) | Yes |
+| With md380 | `ambe` | Bitstream b2 (`AmbeGainDb=-2`) | No |
 
 Cross-mode paths (DMR→D-Star, D-Star→DMR, etc.) always have full AGC and OutputGain support regardless of build or mode.
 
@@ -60,11 +60,11 @@ Modules = S
 DeviceSerial = DQ015SBR
 ```
 
-**AGC limitation**: In this mode, DMR/YSF→DMR/YSF audio is **not re-encoded** after AGC because the MD380 cannot safely decode and re-encode in the same pipeline (shared encoder/decoder state). Use AmbeGain for DMR/YSF level adjustment instead:
+**AGC limitation**: In this mode, DMR/YSF→DMR/YSF audio is **not re-encoded** after AGC because the MD380 cannot safely decode and re-encode in the same pipeline (shared encoder/decoder state). Use `DmrGainMode = ambe` for DMR/YSF level adjustment instead:
 
 ```ini
-AmbeGain   = true
-AmbeGainDb = -2
+DmrGainMode = ambe
+AmbeGainDb  = -2
 ```
 
 AGC still normalizes audio for all cross-mode paths (DMR→D-Star, DMR→M17, etc.). To get full AGC + re-encode on DMR/YSF→DMR/YSF, use a two-device configuration.
@@ -155,19 +155,13 @@ DmrGainOut      = 0
 UsrpGainIn      = 0
 UsrpGainOut     = 0
 
-# DMR/YSF Gain Mode — choose one: AmbeGain (bitstream) or DMRReEncode (PCM).
-# Both are mutually exclusive at runtime; Re-encode takes precedence if both enabled.
-#
-# AMBE2+ bitstream gain (experimental) — adjusts b2 (delta-gamma) in AMBE2+
-# frames directly. No decode/re-encode, no quality loss. Also repairs Golay
-# FEC errors in the A partition. Works with any build (no md380 needed).
-AmbeGain        = true          # enable bitstream gain for DMR/YSF passthrough
-AmbeGainDb      = -2            # -30 to 0 dB (each 2 dB ≈ 1 b2 step)
-#
-# DMR Re-encode (requires md380=true build) — full decode/re-encode via MD380.
-# Provides AGC normalization + OutputGainDMR on PCM for DMR→DMR/YSF.
-DmrReencodeGain = 0             # additional gain for MD380 re-encode only
-DMRReEncode     = false         # re-encode DMR via MD380 after AGC
+# DMR/YSF Gain Mode — controls how DMR→DMR/YSF output level is adjusted.
+#   off      = no gain adjustment on DMR→DMR/YSF passthrough
+#   ambe     = bitstream b2 parameter manipulation (no decode/re-encode, experimental)
+#   reencode = full MD380 decode/re-encode with AGC + OutputGainDMR (requires md380=true)
+DmrGainMode     = ambe          # off / ambe / reencode
+AmbeGainDb      = -2            # for ambe mode: -30 to 0 dB (each 2 dB ≈ 1 b2 step)
+DmrReencodeGain = 0             # for reencode mode: additional gain before MD380 re-encode
 
 # AGC (Automatic Gain Control)
 AGC             = true
@@ -242,23 +236,21 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 | `AGCMaxGainDown` | `24` | Maximum attenuation in dB. Limits reduction on loud input. |
 | `AGCNoiseGate` | `-55` | Noise gate threshold in dBFS. Below this level, gain is frozen. |
 
-#### DMR Re-encode (requires `md380=true` build)
+#### DMR/YSF Gain Mode (`DmrGainMode`)
+
+Controls how DMR→DMR/YSF output level is adjusted. Set via the dashboard dropdown or `DmrGainMode` in tcd.ini.
+
+| Mode | Config value | Requires | Description |
+|------|-------------|----------|-------------|
+| **Off** | `off` | — | No gain adjustment on DMR→DMR/YSF passthrough |
+| **Bitstream** | `ambe` | — | Adjusts b2 (delta-gamma) parameter directly in AMBE2+ frame. No decode/re-encode, no quality loss. Also repairs Golay FEC errors. **(experimental)** |
+| **Re-encode** | `reencode` | `md380=true` | Full decode/re-encode via MD380. Provides AGC normalization + `OutputGainDMR` on PCM. Falls back to `ambe` if md380 not available. |
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `DMRReEncode` | `false` | Re-encode DMR/YSF output via MD380 after AGC. Without re-encode, DMR→DMR listeners receive un-normalized audio (AGC still applies to cross-mode paths like DMR→D-Star). Ignored with a warning if md380 is not compiled in. |
-| `DmrReencodeGain` | `0` | Additional gain (dB) applied before MD380 re-encode. Normally 0 — use `OutputGainDMR` instead. |
-
-#### AMBE2+ Bitstream Gain (experimental)
-
-Adjusts the b2 (delta-gamma) gain parameter directly in AMBE2+ frames without decode/re-encode. Active when DMR Re-encode is not handling the gain. Also repairs Golay FEC errors in the A partition as a side effect.
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `AmbeGain` | `true` | Enable bitstream gain for DMR/YSF passthrough |
-| `AmbeGainDb` | `-2` | Gain in dB (-30 to 0). Each 2 dB ≈ 1 b2 step. Even -2 dB (1 step) repairs FEC errors and reduces choppy audio. |
-
-AmbeGain and DMR Re-encode are mutually exclusive. The web dashboard enforces this via a single mode dropdown (Off / Bitstream / Re-encode). If both are enabled in tcd.ini, a warning is logged and Re-encode takes precedence.
+| `DmrGainMode` | `ambe` | `off` / `ambe` / `reencode` |
+| `AmbeGainDb` | `-2` | Bitstream mode: -30 to 0 dB (each 2 dB ≈ 1 b2 step). Even -2 dB repairs FEC errors. |
+| `DmrReencodeGain` | `0` | Re-encode mode: additional gain (dB) before MD380 re-encode. Normally 0. |
 
 Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.
 

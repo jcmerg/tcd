@@ -79,9 +79,16 @@ int main(int argc, char *argv[])
 		g_Stats.config.outgain_usrp.store(g_Conf.GetGain(EGainType::outgain_usrp));
 		g_Stats.config.outgain_imbe.store(g_Conf.GetGain(EGainType::outgain_imbe));
 		g_Stats.config.outgain_m17.store(g_Conf.GetGain(EGainType::outgain_m17));
-		g_Stats.config.dmr_reencode_enabled.store(
-			g_Conf.GetDMRReEncodeEnabled() && g_Stats.md380.available.load(std::memory_order_relaxed));
-		g_Stats.config.ambe_gain_enabled.store(g_Conf.GetAmbeGainEnabled());
+		{
+			auto mode = g_Conf.GetDmrGainMode();
+			// Downgrade reencode to ambe if md380 not available
+			if (mode == CConfigure::EDmrGainMode::reencode && !g_Stats.md380.available.load(std::memory_order_relaxed))
+			{
+				std::cerr << "Warning: DmrGainMode=reencode but md380 not available, falling back to ambe" << std::endl;
+				mode = CConfigure::EDmrGainMode::ambe;
+			}
+			g_Stats.config.dmr_gain_mode.store((int)mode);
+		}
 		g_Stats.config.ambe_gain_db.store(g_Conf.GetAmbeGainDb());
 		g_Monitor.Start(g_Conf.GetMonitorHttpPort(), g_Conf.GetMonitorStatsPort());
 	}
