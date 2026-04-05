@@ -380,12 +380,22 @@ document.getElementById('agc_en').addEventListener('change', (e) => {
 });
 
 document.getElementById('dmr_reencode_en').addEventListener('change', (e) => {
-  fetch('/api/agc', { method: 'POST', body: JSON.stringify({ dmr_reencode: e.target.checked }) });
+  if (e.target.checked) {
+    document.getElementById('ambe_gain_en').checked = false;
+    fetch('/api/agc', { method: 'POST', body: JSON.stringify({ dmr_reencode: true, ambe_gain: false }) });
+  } else {
+    fetch('/api/agc', { method: 'POST', body: JSON.stringify({ dmr_reencode: false }) });
+  }
   updateGainInterlock();
 });
 
 document.getElementById('ambe_gain_en').addEventListener('change', (e) => {
-  fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain: e.target.checked }) });
+  if (e.target.checked) {
+    document.getElementById('dmr_reencode_en').checked = false;
+    fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain: true, dmr_reencode: false }) });
+  } else {
+    fetch('/api/agc', { method: 'POST', body: JSON.stringify({ ambe_gain: false }) });
+  }
   updateGainInterlock();
 });
 
@@ -397,13 +407,17 @@ document.getElementById('ambe_gain_db').addEventListener('input', (e) => {
 
 function updateGainInterlock() {
   const reenc = document.getElementById('dmr_reencode_en').checked;
-  // When Re-encode active: gray out AmbeGain slider (checkbox stays usable)
-  document.getElementById('ambe_gain_db').disabled = reenc;
-  document.getElementById('ambe_gain_db').style.opacity = reenc ? '0.3' : '1';
-  // When Re-encode active: Re-encode gain slider usable
-  // When Re-encode off: gray out Re-encode gain slider
-  document.getElementById('g_dmr_reencode').disabled = !reenc;
-  document.getElementById('g_dmr_reencode').style.opacity = !reenc ? '0.3' : '1';
+  const ambe = document.getElementById('ambe_gain_en').checked;
+  // AmbeGain section: disabled when Re-encode active
+  document.getElementById('ambe_gain_en').disabled = reenc;
+  document.getElementById('ambe_gain_db').disabled = reenc || !ambe;
+  document.querySelectorAll('#ambe_gain_en, #ambe_gain_db, #v_ambe_gain_db').forEach(
+    el => el.style.opacity = reenc ? '0.3' : '1');
+  // Re-encode section: disabled when AmbeGain active
+  document.getElementById('dmr_reencode_en').disabled = ambe;
+  document.getElementById('g_dmr_reencode').disabled = ambe || !reenc;
+  document.querySelectorAll('#dmr_reencode_en, #g_dmr_reencode, #v_dmr_reencode').forEach(
+    el => el.style.opacity = ambe ? '0.3' : '1');
 }
 
 function saveConfig() {
