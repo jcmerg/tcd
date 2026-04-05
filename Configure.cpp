@@ -46,7 +46,6 @@
 #define AGCTARGET      "AGCTarget"
 #define AGCATTACK      "AGCAttack"
 #define AGCRELEASE     "AGCRelease"
-#define AGCMAXGAIN     "AGCMaxGain"
 #define AGCMAXGAINUP   "AGCMaxGainUp"
 #define AGCMAXGAINDOWN "AGCMaxGainDown"
 #define AGCNOISEGATE   "AGCNoiseGate"
@@ -175,12 +174,6 @@ bool CConfigure::ReadData(const std::string &path)
 			agc_attack = std::stof(value);
 		else if (0 == key.compare(AGCRELEASE))
 			agc_release = std::stof(value);
-		else if (0 == key.compare(AGCMAXGAIN))
-		{
-			// Legacy: single value sets both up and down
-			agc_maxgain_up = std::stof(value);
-			agc_maxgain_down = std::stof(value);
-		}
 		else if (0 == key.compare(AGCMAXGAINUP))
 			agc_maxgain_up = std::stof(value);
 		else if (0 == key.compare(AGCMAXGAINDOWN))

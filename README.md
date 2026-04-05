@@ -201,8 +201,6 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 | `AGCNoiseGate` | `-55` | Noise gate threshold in dBFS. Below this level, gain is frozen. |
 | `DMRReEncode` | `true` | Enable DMR/YSF re-encode via MD380 after AGC. This is the primary reason for re-encoding: without it, DMR/YSF→DMR/YSF listeners receive un-normalized audio. When `false`, original AMBE passes through unchanged (AGC still applies to all cross-mode paths). |
 
-Note: `AGCMaxGain` (symmetric, old style) is still accepted for backwards compatibility — it sets both Up and Down to the same value.
-
 Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.
 
 **AGC algorithm details:**
