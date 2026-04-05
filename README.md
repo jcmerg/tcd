@@ -137,7 +137,7 @@ UsrpGainOut     = 0
 
 # Software vocoder (only effective with md380=true build)
 DmrReencodeGain = 0             # additional gain for MD380 DMR re-encode only
-DMRReEncode     = true          # false = skip DMR re-encode, original AMBE passthrough
+DMRReEncode     = false         # true = re-encode DMR via MD380 after AGC (requires md380=true build)
 
 # AGC (Automatic Gain Control)
 AGC             = true
