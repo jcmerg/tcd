@@ -137,7 +137,7 @@ DeviceSerial = DKB7FXGE
 
 # Output Gain — post-AGC, per target codec, in dB
 # Applied to PCM before encoding. Always effective on cross-mode paths.
-# For DMR→DMR/YSF, OutputGainDMR only applies with DmrGainMode=reencode.
+# For DMR→DMR/YSF passthrough, OutputGainDMR only applies with DmrGainMode=reencode.
 OutputGainDStar = 0             # D-Star output
 OutputGainM17   = 0             # M17/Codec2 output
 OutputGainDMR   = 0             # DMR/YSF output
@@ -157,7 +157,7 @@ UsrpGainOut     = 0
 # DMR/YSF Gain Mode — controls how DMR→DMR/YSF output level is adjusted.
 #   off      = no gain adjustment on DMR→DMR/YSF passthrough
 #   ambe     = bitstream b2 parameter manipulation (no decode/re-encode, experimental)
-#   reencode = full MD380 decode/re-encode with AGC + OutputGainDMR (requires md380=true)
+#   reencode = full MD380 decode/re-encode with AGC + DmrReencodeGain (requires md380=true)
 DmrGainMode     = ambe          # off / ambe / reencode
 AmbeGainDb      = -2            # for ambe mode: -30 to 0 dB (each 2 dB ≈ 1 b2 step)
 DmrReencodeGain = -18           # for reencode mode: compensates re-encode loudness (~-18 dB)
@@ -243,7 +243,7 @@ Controls how DMR→DMR/YSF output level is adjusted. Set via the dashboard dropd
 |------|-------------|----------|-------------|
 | **Off** | `off` | — | No gain adjustment on DMR→DMR/YSF passthrough |
 | **Bitstream** | `ambe` | — | Adjusts b2 (delta-gamma) parameter directly in AMBE2+ frame. No decode/re-encode, no quality loss. Also repairs Golay FEC errors. **(experimental)** |
-| **Re-encode** | `reencode` | `md380=true` | Full decode/re-encode via MD380. Provides AGC normalization + `OutputGainDMR` on PCM. Falls back to `ambe` if md380 not available. |
+| **Re-encode** | `reencode` | `md380=true` | Full decode/re-encode via MD380. Provides AGC normalization + `DmrReencodeGain` on PCM. Falls back to `ambe` if md380 not available. |
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -348,7 +348,7 @@ sudo journalctl -u tcd -f          # follow logs
 - **Per-codec output gains**: Independent post-AGC gains for D-Star, M17/Codec2, DMR/YSF, P25/NXDN, USRP — applied in encode functions and DVSI FeedDevice (shared buffer never modified)
 - **AMBE2+ bitstream gain** (experimental): `AmbeGainDb` adjusts the b2 (delta-gamma) parameter directly in the AMBE2+ frame — no vocoder decode/re-encode needed, no quality loss. Uses Golay(24,12) FEC recomputation for the A partition. Active when DMR Re-encode is off.
 - **AGC v3**: Sliding RMS window (60ms), per-stream speaker tracking, gate-with-decay to speaker average, fast post-gate release (5x/5 frames), asymmetric limits (up to 40dB), noise gate with hysteresis, peak limiter, live reconfiguration from dashboard
-- **DMR re-encode** (requires `md380=true`): `DmrGainMode=reencode` enables full decode/re-encode via MD380 with AGC normalization + OutputGainDMR for DMR→DMR/YSF
+- **DMR re-encode** (requires `md380=true`): `DmrGainMode=reencode` enables full decode/re-encode via MD380 with AGC normalization + `DmrReencodeGain` for DMR→DMR/YSF
 - **MD380 stream isolation**: Save/restore encoder state per stream, mutex around all MD380 calls
 
 ### Monitoring & Configuration
