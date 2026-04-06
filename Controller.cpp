@@ -778,10 +778,12 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	g_Stats.UpdateLevelsOut(packet->GetModule(), packet->GetAudioSamples(), 160);
 	{
 		int i = packet->GetModule() - 'A';
-		auto &ms = g_Stats.modules[i];
-		g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "codec2",
-			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
-			ms.agc_gain_db.load(), ms.agc_gate.load());
+		if (i >= 0 && i < CTcdStats::MAX_MODULES) {
+			auto &ms = g_Stats.modules[i];
+			g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "codec2",
+				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+				ms.agc_gain_db.load(), ms.agc_gate.load());
+		}
 	}
 	// D-Star DVSI (gain applied in FeedDevice)
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
@@ -795,9 +797,11 @@ void CController::Codec2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 		if (mixed_mode)
 		{
 			char mod = packet->GetModule();
-			auto it = std::string(g_Conf.GetTCMods()).find(mod);
-			uint8_t dmr_ch = (it == 0) ? 1 : 2;
-			mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
+			auto pos = std::string(g_Conf.GetTCMods()).find(mod);
+			if (pos != std::string::npos) {
+				uint8_t dmr_ch = (pos == 0) ? 1 : 2;
+				mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
+			}
 		}
 		else
 			dmrsf_device->AddPacket(packet);
@@ -916,10 +920,12 @@ void CController::SWAMBE2toAudio(std::shared_ptr<CTranscoderPacket> packet)
 	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
 	{
 		int i = packet->GetModule() - 'A';
-		auto &ms = g_Stats.modules[i];
-		g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "dmr",
-			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
-			ms.agc_gain_db.load(), ms.agc_gate.load());
+		if (i >= 0 && i < CTcdStats::MAX_MODULES) {
+			auto &ms = g_Stats.modules[i];
+			g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "dmr",
+				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+				ms.agc_gain_db.load(), ms.agc_gate.load());
+		}
 	}
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
@@ -995,10 +1001,12 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
 	{
 		int i = packet->GetModule() - 'A';
-		auto &ms = g_Stats.modules[i];
-		g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "imbe",
-			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
-			ms.agc_gain_db.load(), ms.agc_gate.load());
+		if (i >= 0 && i < CTcdStats::MAX_MODULES) {
+			auto &ms = g_Stats.modules[i];
+			g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "imbe",
+				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+				ms.agc_gain_db.load(), ms.agc_gate.load());
+		}
 	}
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
@@ -1015,9 +1023,11 @@ void CController::IMBEtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 		{
 
 			char mod = packet->GetModule();
-			auto it = std::string(g_Conf.GetTCMods()).find(mod);
-			uint8_t dmr_ch = (it == 0) ? 1 : 2;
-			mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
+			auto pos = std::string(g_Conf.GetTCMods()).find(mod);
+			if (pos != std::string::npos) {
+				uint8_t dmr_ch = (pos == 0) ? 1 : 2;
+				mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
+			}
 		}
 		else
 			dmrsf_device->AddPacket(packet);
@@ -1096,10 +1106,12 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
 	{
 		int i = packet->GetModule() - 'A';
-		auto &ms = g_Stats.modules[i];
-		g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "usrp",
-			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
-			ms.agc_gain_db.load(), ms.agc_gate.load());
+		if (i >= 0 && i < CTcdStats::MAX_MODULES) {
+			auto &ms = g_Stats.modules[i];
+			g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "usrp",
+				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+				ms.agc_gain_db.load(), ms.agc_gate.load());
+		}
 	}
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
@@ -1116,9 +1128,11 @@ void CController::USRPtoAudio(std::shared_ptr<CTranscoderPacket> packet)
 		{
 
 			char mod = packet->GetModule();
-			auto it = std::string(g_Conf.GetTCMods()).find(mod);
-			uint8_t dmr_ch = (it == 0) ? 1 : 2;
-			mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
+			auto pos = std::string(g_Conf.GetTCMods()).find(mod);
+			if (pos != std::string::npos) {
+				uint8_t dmr_ch = (pos == 0) ? 1 : 2;
+				mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
+			}
 		}
 		else
 			dmrsf_device->AddPacket(packet);
@@ -1172,10 +1186,12 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 	g_Stats.UpdateLevelsOut(packet->GetModule(), tmp, 160);
 	{
 		int i = packet->GetModule() - 'A';
-		auto &ms = g_Stats.modules[i];
-		g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "svx",
-			ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
-			ms.agc_gain_db.load(), ms.agc_gate.load());
+		if (i >= 0 && i < CTcdStats::MAX_MODULES) {
+			auto &ms = g_Stats.modules[i];
+			g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "svx",
+				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+				ms.agc_gain_db.load(), ms.agc_gate.load());
+		}
 	}
 	if (mixed_mode && packet->GetModule() == mixed_dstar_module)
 	{
@@ -1192,9 +1208,11 @@ void CController::SvxToAudio(std::shared_ptr<CTranscoderPacket> packet)
 		{
 
 			char mod = packet->GetModule();
-			auto it = std::string(g_Conf.GetTCMods()).find(mod);
-			uint8_t dmr_ch = (it == 0) ? 1 : 2;
-			mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
+			auto pos = std::string(g_Conf.GetTCMods()).find(mod);
+			if (pos != std::string::npos) {
+				uint8_t dmr_ch = (pos == 0) ? 1 : 2;
+				mixed_dv3003->AddPacketToChannel(packet, dmr_ch);
+			}
 		}
 		else
 			dmrsf_device->AddPacket(packet);
@@ -1243,10 +1261,12 @@ void CController::RouteDstPacket(std::shared_ptr<CTranscoderPacket> packet)
 		g_Stats.UpdateLevelsOut(packet->GetModule(), packet->GetAudioSamples(), 160);
 		{
 			int i = packet->GetModule() - 'A';
-			auto &ms = g_Stats.modules[i];
-			g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "dstar",
-				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
-				ms.agc_gain_db.load(), ms.agc_gate.load());
+			if (i >= 0 && i < CTcdStats::MAX_MODULES) {
+				auto &ms = g_Stats.modules[i];
+				g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "dstar",
+					ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+					ms.agc_gain_db.load(), ms.agc_gate.load());
+			}
 		}
 		// Output gains applied in encode functions and DVSI FeedDevice
 		codec2_queue.push(packet);
@@ -1294,10 +1314,12 @@ void CController::RouteDmrPacket(std::shared_ptr<CTranscoderPacket> packet)
 		g_Stats.UpdateLevelsOut(packet->GetModule(), packet->GetAudioSamples(), 160);
 		{
 			int i = packet->GetModule() - 'A';
-			auto &ms = g_Stats.modules[i];
-			g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "dmr",
-				ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
-				ms.agc_gain_db.load(), ms.agc_gate.load());
+			if (i >= 0 && i < CTcdStats::MAX_MODULES) {
+				auto &ms = g_Stats.modules[i];
+				g_StatsLog.LogFrame(packet->GetModule(), packet->GetStreamId(), "dmr",
+					ms.rms_in.load(), ms.peak_in.load(), ms.rms_out.load(), ms.peak_out.load(),
+					ms.agc_gain_db.load(), ms.agc_gate.load());
+			}
 		}
 		// Output gains applied in encode functions and DVSI FeedDevice
 		// Re-encode DMR from AGC'd PCM via md380 software vocoder
