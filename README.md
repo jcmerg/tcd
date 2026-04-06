@@ -249,7 +249,7 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 
 #### DMR/YSF Gain Mode (`DmrGainMode`)
 
-Controls how DMR→DMR/YSF output level is adjusted. Set via the dashboard dropdown or `DmrGainMode` in tcd.ini.
+Controls how DMR→DMR/YSF output level is adjusted. Without re-encode, AMBE2+ data is passed through directly — AGC cannot be applied because there is no PCM stage. Re-encode forces a decode/re-encode cycle so that AGC and gain control take effect on this path. Set via the dashboard dropdown or `DmrGainMode` in tcd.ini.
 
 | Mode | Config value | Requires | Description |
 |------|-------------|----------|-------------|
