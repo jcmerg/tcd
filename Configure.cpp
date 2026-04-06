@@ -158,7 +158,7 @@ bool CConfigure::ReadData(const std::string &path)
 		else if (0 == key.compare(OUTGAIN_DMR))
 		{
 			outgain_dmr = getSigned(key, value);
-			if (outgain_dmr > 0) std::cerr << "Warning: " << OUTGAIN_DMR << " > 0 is unusual (AMBE2+ is inherently ~15-20 dB louder than AMBE)" << std::endl;
+			if (outgain_dmr > 0) std::cerr << "Warning: " << OUTGAIN_DMR << " > 0 is unusual (amplifies all DMR/YSF output)" << std::endl;
 		}
 		else if (0 == key.compare(OUTGAIN_USRP))
 			outgain_usrp = getSigned(key, value);

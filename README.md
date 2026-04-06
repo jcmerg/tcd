@@ -204,7 +204,7 @@ The web dashboard and tcdmon show a simplified version of this chain per active 
 
 #### Output Gain (post-AGC)
 
-Applied after AGC, independently per target codec. AMBE2+ (DMR/YSF) is inherently ~15-20 dB louder than AMBE (D-Star) at the same PCM input level — this is a known codec characteristic also addressed by xlxd/ambed (20 dB offset) and DVSwitch (~15 dB).
+Applied after AGC, independently per target codec. Use these to fine-tune the output level for each codec path. The DVSI hardware handles AMBE/AMBE2+ level matching internally, so cross-mode paths (D-Star↔DMR) typically need no compensation here.
 
 | Parameter | Default | Applied to |
 |-----------|---------|------------|
@@ -274,7 +274,7 @@ Gain limits are asymmetric by design: attenuation (down) is safe, amplification 
 
 **Without AGC**, the static gain values must compensate for all level differences between codecs and users. Tuning is tedious and every route needs individual attention.
 
-**With AGC**, static gains only do coarse matching (D-Star is inherently quieter, so a small boost remains). The AGC automatically adjusts for different microphone levels, radio models, and codec characteristics.
+**With AGC**, static gains are typically 0 for all codecs. The AGC automatically adjusts for different microphone levels, radio models, and codec characteristics.
 
 All AGC and gain parameters can be changed at runtime via the web dashboard (no restart required).
 
