@@ -184,11 +184,23 @@ StatsLogRetain = 24
 
 ### Audio gain
 
-All transcoding passes through PCM as intermediate format:
+All transcoding passes through PCM as intermediate format. The gain chain depends on the source codec:
 
 ```
-Source Codec --[DVSI GainIn]--> PCM --[AGC]--> normalized PCM --[OutputGain]--> Target Codec
+D-Star/DMR (DVSI hardware):
+  AMBE --[DVSI GainIn hw]--> PCM --[AGC]--> PCM --[OutputGain sw]--> [DVSI GainOut hw]--> Target AMBE
+
+M17/P25 (software vocoder):
+  Codec --[decode]--> PCM --[AGC]--> PCM --[OutputGain]--> Target Codec
+
+USRP/SVX (raw PCM):
+  PCM --[UsrpGainIn]--> PCM --[AGC]--> PCM --[OutputGain]--> Target Codec
+
+DMR→DMR/YSF re-encode (DmrGainMode=reencode):
+  AMBE2+ --[decode]--> PCM --[AGC]--> PCM --[OutputGainDMR]--> [DmrReencodeGain]--> MD380 --> AMBE2+
 ```
+
+The web dashboard and tcdmon show a simplified version of this chain per active module.
 
 #### Output Gain (post-AGC)
 
