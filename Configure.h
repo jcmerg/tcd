@@ -74,7 +74,7 @@ private:
 	float agc_target  = -16.0f;
 	float agc_attack  = 50.0f;
 	float agc_release = 500.0f;
-	float agc_maxgain_up   = 20.0f;   // max amplification (dB)
+	float agc_maxgain_up   = 30.0f;   // max amplification (dB)
 	float agc_maxgain_down = 24.0f;   // max attenuation (dB)
 	float agc_noisegate    = -55.0f;  // noise gate threshold (dBFS)
 	bool     monitor_enabled    = true;

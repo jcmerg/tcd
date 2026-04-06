@@ -231,7 +231,7 @@ The AGC normalizes audio levels after decode and before encode. It tracks gain p
 | `AGCTarget` | `-16` | Target RMS level in dBFS. Lower = quieter output. |
 | `AGCAttack` | `50` | Attack time in ms. How fast loud signals are dampened. |
 | `AGCRelease` | `500` | Release time in ms. How fast quiet signals are raised. |
-| `AGCMaxGainUp` | `20` | Maximum amplification in dB. Limits noise boost on quiet input. |
+| `AGCMaxGainUp` | `30` | Maximum amplification in dB. Limits noise boost on quiet input. |
 | `AGCMaxGainDown` | `24` | Maximum attenuation in dB. Limits reduction on loud input. |
 | `AGCNoiseGate` | `-55` | Noise gate threshold in dBFS. Below this level, gain is frozen. |
 
