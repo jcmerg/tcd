@@ -46,7 +46,7 @@ Channel assignment (automatic):
 | Build | DmrGainMode | DMR→DMR/YSF gain | AGC on DMR→DMR/YSF |
 |-------|-------------|-------------------|--------------------|
 | Without md380 | `ambe` | Bitstream b2 (`AmbeGainDb=-2`) | No |
-| With md380 | `reencode` | PCM (`OutputGainDMR=-16`) | Yes |
+| With md380 | `reencode` | PCM (`DmrReencodeGain=-18`) | Yes |
 | With md380 | `ambe` | Bitstream b2 (`AmbeGainDb=-2`) | No |
 
 Cross-mode paths (DMR→D-Star, D-Star→DMR, etc.) always have full AGC and OutputGain support regardless of build or mode.
@@ -140,7 +140,7 @@ DeviceSerial = DKB7FXGE
 # For DMR→DMR/YSF, OutputGainDMR only applies with DmrGainMode=reencode.
 OutputGainDStar = 0             # D-Star output
 OutputGainM17   = 0             # M17/Codec2 output
-OutputGainDMR   = 0             # DMR/YSF output (-16 with DmrGainMode=reencode)
+OutputGainDMR   = 0             # DMR/YSF output
 OutputGainIMBE  = 0             # P25/NXDN output
 OutputGainUSRP  = 0             # USRP output
 
@@ -160,7 +160,7 @@ UsrpGainOut     = 0
 #   reencode = full MD380 decode/re-encode with AGC + OutputGainDMR (requires md380=true)
 DmrGainMode     = ambe          # off / ambe / reencode
 AmbeGainDb      = -2            # for ambe mode: -30 to 0 dB (each 2 dB ≈ 1 b2 step)
-DmrReencodeGain = 0             # for reencode mode: additional gain before MD380 re-encode
+DmrReencodeGain = -18           # for reencode mode: compensates re-encode loudness (~-18 dB)
 
 # AGC (Automatic Gain Control)
 AGC             = true
@@ -204,7 +204,7 @@ Applied after AGC, independently per target codec. AMBE2+ (DMR/YSF) is inherentl
 
 Gains are applied on local copies in each encode function and in the DVSI FeedDevice thread — the shared PCM buffer is never modified.
 
-`OutputGainDMR` is only effective when `DMRReEncode=true` (PCM gain before md380 re-encode). Set to `-16` to compensate the ~15-20 dB AMBE2+ loudness difference. Without re-encode, use `AmbeGainDb` instead for DMR/YSF level adjustment.
+`OutputGainDMR` applies to all DMR/YSF encode paths (DVSI hardware and re-encode). For the re-encode loudness compensation, use `DmrReencodeGain` (recommended `-18`) which only affects the MD380 re-encode path. Without re-encode, use `AmbeGainDb` instead for DMR/YSF level adjustment.
 
 #### DVSI Hardware Gain
 
@@ -249,7 +249,7 @@ Controls how DMR→DMR/YSF output level is adjusted. Set via the dashboard dropd
 |-----------|---------|-------------|
 | `DmrGainMode` | `ambe` | `off` / `ambe` / `reencode` |
 | `AmbeGainDb` | `-2` | Bitstream mode: -30 to 0 dB (each 2 dB ≈ 1 b2 step). Even -2 dB repairs FEC errors. |
-| `DmrReencodeGain` | `0` | Re-encode mode: additional gain (dB) before MD380 re-encode. Normally 0. |
+| `DmrReencodeGain` | `-18` | Re-encode mode: compensates re-encode loudness (dB). Recommended `-18`. |
 
 Gain limits are asymmetric by design: attenuation (down) is safe, amplification (up) risks noise. Typical DMR input sits at -35 dBFS, so +20 dB up is needed to reach -16 target.
 
