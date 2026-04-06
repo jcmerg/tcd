@@ -160,7 +160,7 @@ UsrpGainOut     = 0
 #   reencode = full MD380 decode/re-encode with AGC + DmrReencodeGain (requires md380=true)
 DmrGainMode     = ambe          # off / ambe / reencode
 AmbeGainDb      = -2            # for ambe mode: -30 to 0 dB (each 2 dB ≈ 1 b2 step)
-DmrReencodeGain = -16           # for reencode mode: compensates re-encode loudness (~-18 dB)
+DmrReencodeGain = -16           # for reencode mode: compensates re-encode loudness (~-16 dB)
 
 # AGC (Automatic Gain Control)
 AGC             = true
