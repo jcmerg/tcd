@@ -27,50 +27,26 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  padding: 16px 20px;
+  padding: 16px;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-a { color: var(--link-color); text-decoration: none; }
-a:hover { color: var(--link-hover); }
-
-/* Top header */
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 10px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-.page-header h1 {
+h1 {
   color: var(--text-primary);
   font-size: 20px;
   font-weight: 600;
-  letter-spacing: 0.3px;
-}
-
-/* Section pattern (mirrors URFD admin's .admin-section) */
-.section { margin-bottom: 24px; }
-.section > h2 {
-  color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 500;
-  padding-bottom: 8px;
+  letter-spacing: 0.5px;
   margin-bottom: 12px;
-  border-bottom: 1px solid #555;
 }
-h3.sub {
+h2 {
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin: 14px 0 6px;
+  margin: 12px 0 8px;
 }
-
-/* Two-column grid for module cards & config */
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 800px) {
   .grid { grid-template-columns: 1fr; }
@@ -80,61 +56,52 @@ h3.sub {
   .config-row input[type=range] { max-width: 150px; }
   .agc-info { flex-wrap: wrap; }
 }
-
-/* Flat module panels (no roundings, no shadows) */
-.panel {
+.card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 12px;
   min-width: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.panel.active { border-color: var(--link-color); }
-.module-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border-color);
+.card.active {
+  border-color: var(--link-color);
+  box-shadow: 0 2px 12px rgba(79, 195, 247, 0.18);
 }
+.module-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .module-letter {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 600;
-  color: var(--link-color);
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
 }
 .codec-badge {
   background-color: var(--bg-tertiary);
-  padding: 1px 6px;
+  padding: 3px 10px;
+  border-radius: 12px;
   font-size: 11px;
-  font-weight: 600;
-  color: var(--link-hover);
+  font-weight: 500;
+  color: var(--link-color);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border: 1px solid var(--border-color);
 }
 .codec-badge.none { opacity: 0.3; }
 
-/* "Well" form container (URFD pattern) */
-.well {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  padding: 12px 14px;
-  margin-bottom: 12px;
-}
-
 /* VU Meters */
-.vu-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: 12px; }
+.vu-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; }
 .vu-label { flex: 0 0 60px; text-align: right; color: var(--text-secondary); white-space: nowrap; }
 .vu-bar-bg {
   flex: 1;
-  height: 12px;
+  height: 14px;
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
+  border-radius: 3px;
   position: relative;
   overflow: hidden;
   min-width: 0;
 }
-.vu-bar { height: 100%; transition: width 0.15s ease-out; min-width: 1px; }
+.vu-bar { height: 100%; border-radius: 2px; transition: width 0.15s ease-out; min-width: 1px; }
 .vu-bar.green { background: linear-gradient(90deg, #2e7d32, var(--success)); }
 .vu-bar.yellow { background: linear-gradient(90deg, #f9a825, var(--warning)); }
 .vu-bar.red { background: linear-gradient(90deg, #c62828, var(--danger)); }
@@ -149,97 +116,86 @@ h3.sub {
   font-variant-numeric: tabular-nums;
 }
 
-/* Signal flow diagram (kept compact, no roundings) */
+/* Signal flow diagram */
 .flow {
-  margin: 6px 0;
-  padding: 6px 8px;
+  margin: 8px 0;
+  padding: 8px;
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
+  border-radius: 6px;
   font-size: 12px;
   min-width: 0;
   overflow-x: auto;
   font-family: var(--mono);
 }
-.flow-row { display: flex; align-items: center; gap: 4px; margin: 2px 0; }
+.flow-row { display: flex; align-items: center; gap: 4px; margin: 3px 0; }
 .flow-node {
-  padding: 1px 6px;
+  padding: 2px 7px;
+  border-radius: 4px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
   font-weight: 500;
-  border: 1px solid var(--border-color);
+  border: 1px solid transparent;
 }
-.flow-src  { color: var(--success);   background-color: rgba(102, 187, 106, 0.08); }
-.flow-gain { color: #ce93d8;          background-color: rgba(186, 104, 200, 0.08); }
-.flow-agc  { color: var(--warning);   background-color: rgba(255, 167, 38, 0.08); min-width: 100px; }
-.flow-pcm  { color: var(--link-color); background-color: rgba(79, 195, 247, 0.07); flex: 0 0 90px; overflow: hidden; }
-.flow-dst  { color: var(--danger);    background-color: rgba(239, 83, 80, 0.08); }
+.flow-src  { background-color: rgba(102, 187, 106, 0.15); color: var(--success);   border-color: rgba(102, 187, 106, 0.3); }
+.flow-gain { background-color: rgba(186, 104, 200, 0.15); color: #ce93d8;          border-color: rgba(186, 104, 200, 0.3); }
+.flow-agc  { background-color: rgba(255, 167, 38, 0.15);  color: var(--warning);   border-color: rgba(255, 167, 38, 0.3); min-width: 105px; }
+.flow-pcm  { background-color: rgba(79, 195, 247, 0.12);  color: var(--link-color); border-color: rgba(79, 195, 247, 0.25); flex: 0 0 90px; overflow: hidden; }
+.flow-dst  { background-color: rgba(239, 83, 80, 0.15);   color: var(--danger);    border-color: rgba(239, 83, 80, 0.3); }
 .flow-arrow { color: var(--text-muted); flex-shrink: 0; }
 .flow-level { color: var(--warning); font-weight: 600; }
 
-/* AGC inline display */
+/* AGC display */
 .agc-info {
   display: flex;
   gap: 16px;
   font-size: 12px;
-  margin-top: 4px;
+  margin: 4px 0;
   white-space: nowrap;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
 }
 .agc-item { color: var(--text-secondary); }
 .agc-item span { color: var(--warning); font-weight: 600; }
+.agc-gate { color: var(--danger); font-weight: 600; }
 
-/* Tables — URFD .table .table-striped .table-condensed */
-table.tcd {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+/* Devices */
+.device {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
   font-size: 13px;
+  border-bottom: 1px solid var(--border-color);
 }
-table.tcd thead th {
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 6px 10px;
-  border-bottom: 2px solid var(--accent);
-  background-color: var(--bg-tertiary);
-  white-space: nowrap;
-}
-table.tcd tbody td {
-  padding: 5px 10px;
-  vertical-align: middle;
-  border-top: 1px solid var(--border-color);
-}
-table.tcd tbody tr:nth-of-type(odd)  td { background-color: rgba(15, 52, 96, 0.18); }
-table.tcd td.num,
-table.tcd th.num {
-  text-align: right;
+.device:last-child { border-bottom: none; }
+.device-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.device-dot.online  { background-color: var(--success); }
+.device-dot.active  { background-color: var(--link-color); box-shadow: 0 0 8px var(--link-color); }
+.device-dot.offline { background-color: var(--danger); }
+.device-info { color: var(--text-secondary); }
+.device-buf {
+  color: var(--link-color);
   font-family: var(--mono);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-table.tcd td.center, table.tcd th.center { text-align: center; }
-table.tcd td.muted { color: var(--text-muted); font-family: var(--mono); font-size: 11px; }
+.device-active { color: var(--link-color); font-weight: 600; }
+.device-err    { color: var(--danger); font-weight: 600; }
+.device-stats  { color: var(--text-muted); font-size: 11px; font-family: var(--mono); }
 
-/* Status dots used inside table cells */
-.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; vertical-align: middle; margin-right: 4px; }
-.dot.online  { background-color: var(--success); }
-.dot.active  { background-color: var(--link-color); box-shadow: 0 0 6px var(--link-color); }
-.dot.offline { background-color: var(--danger); }
-.dot.ok      { background-color: var(--success); }
-.dot.err     { background-color: var(--danger); }
+/* Reflector status */
+.ref-status { display: flex; gap: 16px; align-items: center; font-size: 13px; padding: 6px 0; }
+.ref-stats  { color: var(--text-secondary); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.ref-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.ref-dot.ok  { background-color: var(--success); }
+.ref-dot.err { background-color: var(--danger); }
 
-.serial   { font-weight: 600; color: var(--text-primary); font-family: var(--mono); }
-.mod-tag  { color: var(--link-color); font-weight: 600; font-family: var(--mono); }
-.err-tag  { color: var(--danger); font-weight: 600; }
-
-/* Config sliders */
-.config-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 13px; }
-.config-row label { width: 140px; color: var(--text-secondary); }
+/* Config panel */
+.config-section { margin-top: 16px; }
+.config-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; }
+.config-row label { width: 130px; color: var(--text-secondary); }
 .config-row input[type=range] { flex: 1; max-width: 200px; accent-color: var(--link-color); }
 .config-row .val {
   width: 50px;
@@ -249,58 +205,56 @@ table.tcd td.muted { color: var(--text-muted); font-family: var(--mono); font-si
   font-variant-numeric: tabular-nums;
 }
 .config-row input[type=checkbox] { accent-color: var(--link-color); }
-
-select, input[type=text], input[type=number], input[type=password] {
+select {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
+  border-radius: 6px;
   padding: 4px 8px;
   font-family: inherit;
   font-size: 13px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-select:focus, input:focus {
+select:focus {
   outline: none;
   border-color: var(--link-color);
   box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.15);
 }
-
-/* Buttons — URFD admin uses Bootstrap btn-default/primary/sm */
 .btn {
   background-color: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  padding: 5px 14px;
+  padding: 6px 16px;
+  border-radius: 6px;
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 .btn:hover {
   background-color: #194a7a;
   border-color: var(--link-color);
   color: #fff;
 }
-.btn-sm { padding: 3px 10px; font-size: 12px; }
 
-/* Connection status — flat label, URFD-style */
+/* Connection indicator */
 .conn {
-  font-size: 11px;
-  padding: 3px 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
   border: 1px solid transparent;
 }
 .conn.ok  { background-color: rgba(102, 187, 106, 0.15); color: var(--success); border-color: rgba(102, 187, 106, 0.4); }
 .conn.err { background-color: rgba(239, 83, 80, 0.15);   color: var(--danger);  border-color: rgba(239, 83, 80, 0.4); }
 
 .save-status { margin-left: 8px; font-size: 12px; color: var(--text-muted); }
-.empty       { color: var(--text-muted); font-size: 13px; padding: 8px 0; }
+.empty       { color: var(--text-muted); font-size: 13px; }
 
 .footer {
-  margin-top: 20px;
+  margin-top: 16px;
   font-size: 12px;
   color: var(--text-muted);
   text-align: center;
@@ -310,72 +264,68 @@ select:focus, input:focus {
 </style>
 </head>
 <body>
-<div class="page-header">
-  <h1>TCD Transcoder Monitor</h1>
-  <span class="conn" id="conn">connecting...</span>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+<h1 style="margin-bottom:0">TCD Transcoder Monitor</h1>
+<span class="conn" id="conn">connecting...</span>
 </div>
 
-<div class="section">
-  <h2>Modules</h2>
-  <div id="modules"></div>
-</div>
+<div id="modules"></div>
 
-<div class="section">
+<div class="grid" style="margin-top:12px">
+<div class="card">
   <h2>DVSI Devices</h2>
-  <div id="devices"><div class="empty">loading&hellip;</div></div>
+  <div id="devices">-</div>
 </div>
-
-<div class="section">
+<div class="card">
   <h2>Reflector</h2>
-  <div id="reflector"><div class="empty">loading&hellip;</div></div>
+  <div id="reflector">-</div>
+</div>
 </div>
 
-<div class="section">
+<div class="card config-section">
   <h2>Configuration</h2>
-  <div class="well">
-    <div class="grid">
-      <div>
-        <h3 class="sub">Output Gain (post-AGC)</h3>
-        <div class="config-row"><label>D-Star Output</label><input type="range" min="-30" max="10" id="og_dstar"><span class="val" id="v_og_dstar">0</span></div>
-        <div class="config-row"><label>M17 Output</label><input type="range" min="-30" max="10" id="og_m17"><span class="val" id="v_og_m17">0</span></div>
-        <div class="config-row"><label>DMR/YSF Output</label><input type="range" min="-30" max="10" id="og_dmr"><span class="val" id="v_og_dmr">0</span></div>
-        <div class="config-row"><label>P25/NXDN Output</label><input type="range" min="-30" max="10" id="og_imbe"><span class="val" id="v_og_imbe">0</span></div>
-        <div class="config-row"><label>USRP/SVX Output</label><input type="range" min="-30" max="10" id="og_usrp"><span class="val" id="v_og_usrp">0</span></div>
-        <h3 class="sub">DVSI Hardware</h3>
-        <div class="config-row"><label>D-Star DVSI In</label><input type="range" min="-40" max="40" id="g_dstar_in"><span class="val" id="v_dstar_in">0</span></div>
-        <div class="config-row"><label>D-Star DVSI Out</label><input type="range" min="-40" max="40" id="g_dstar_out"><span class="val" id="v_dstar_out">0</span></div>
-        <div class="config-row"><label>DMR DVSI In</label><input type="range" min="-40" max="40" id="g_dmr_in"><span class="val" id="v_dmr_in">0</span></div>
-        <div class="config-row"><label>DMR DVSI Out</label><input type="range" min="-40" max="40" id="g_dmr_out"><span class="val" id="v_dmr_out">0</span></div>
-        <h3 class="sub">USRP / SVX</h3>
-        <div class="config-row"><label>USRP Receive</label><input type="range" min="-40" max="40" id="g_usrp_rx"><span class="val" id="v_usrp_rx">0</span></div>
-        <div class="config-row"><label>USRP Transmit</label><input type="range" min="-40" max="40" id="g_usrp_tx"><span class="val" id="v_usrp_tx">0</span></div>
-        <h3 class="sub">DMR/YSF Gain</h3>
-        <div class="config-row"><label>Mode</label><select id="dmr_gain_mode" style="flex:1;max-width:200px">
-          <option value="off">Off</option>
-          <option value="ambe">Bitstream (b2)</option>
-          <option value="reencode">Re-encode (MD380)</option>
-        </select></div>
-        <div id="dmr_gain_ambe" style="display:none">
-          <div class="config-row"><label>Bitstream Gain</label><input type="range" min="-30" max="0" id="ambe_gain_db"><span class="val" id="v_ambe_gain_db">-2</span></div>
-        </div>
-        <div id="dmr_gain_reencode" style="display:none">
-          <div class="config-row"><label>Re-enc Gain</label><input type="range" min="-40" max="40" id="g_dmr_reencode"><span class="val" id="v_dmr_reencode">0</span></div>
-        </div>
+  <div class="grid">
+    <div>
+      <h2 style="font-size:13px">Output Gain (post-AGC)</h2>
+      <div class="config-row"><label>D-Star Output</label><input type="range" min="-30" max="10" id="og_dstar"><span class="val" id="v_og_dstar">0</span></div>
+      <div class="config-row"><label>M17 Output</label><input type="range" min="-30" max="10" id="og_m17"><span class="val" id="v_og_m17">0</span></div>
+      <div class="config-row"><label>DMR/YSF Output</label><input type="range" min="-30" max="10" id="og_dmr"><span class="val" id="v_og_dmr">0</span></div>
+      <div class="config-row"><label>P25/NXDN Output</label><input type="range" min="-30" max="10" id="og_imbe"><span class="val" id="v_og_imbe">0</span></div>
+      <div class="config-row"><label>USRP/SVX Output</label><input type="range" min="-30" max="10" id="og_usrp"><span class="val" id="v_og_usrp">0</span></div>
+      <h2 style="font-size:13px">DVSI Hardware</h2>
+      <div class="config-row"><label>D-Star DVSI In</label><input type="range" min="-40" max="40" id="g_dstar_in"><span class="val" id="v_dstar_in">0</span></div>
+      <div class="config-row"><label>D-Star DVSI Out</label><input type="range" min="-40" max="40" id="g_dstar_out"><span class="val" id="v_dstar_out">0</span></div>
+      <div class="config-row"><label>DMR DVSI In</label><input type="range" min="-40" max="40" id="g_dmr_in"><span class="val" id="v_dmr_in">0</span></div>
+      <div class="config-row"><label>DMR DVSI Out</label><input type="range" min="-40" max="40" id="g_dmr_out"><span class="val" id="v_dmr_out">0</span></div>
+      <h2 style="font-size:13px">USRP / SVX</h2>
+      <div class="config-row"><label>USRP Receive</label><input type="range" min="-40" max="40" id="g_usrp_rx"><span class="val" id="v_usrp_rx">0</span></div>
+      <div class="config-row"><label>USRP Transmit</label><input type="range" min="-40" max="40" id="g_usrp_tx"><span class="val" id="v_usrp_tx">0</span></div>
+      <h2 style="font-size:13px">DMR/YSF Gain</h2>
+      <div class="config-row"><label>Mode</label><select id="dmr_gain_mode" style="flex:1;max-width:200px">
+        <option value="off">Off</option>
+        <option value="ambe">Bitstream (b2)</option>
+        <option value="reencode">Re-encode (MD380)</option>
+      </select></div>
+      <div id="dmr_gain_ambe" style="display:none">
+        <div class="config-row"><label>Bitstream Gain</label><input type="range" min="-30" max="0" id="ambe_gain_db"><span class="val" id="v_ambe_gain_db">-2</span></div>
       </div>
-      <div>
-        <h3 class="sub">AGC</h3>
-        <div class="config-row"><label>Enabled</label><input type="checkbox" id="agc_en"></div>
-        <div class="config-row"><label>Target (dBFS)</label><input type="range" min="-40" max="0" id="agc_target"><span class="val" id="v_agc_target">-16</span></div>
-        <div class="config-row"><label>Attack (ms)</label><input type="range" min="5" max="200" id="agc_attack"><span class="val" id="v_agc_attack">50</span></div>
-        <div class="config-row"><label>Release (ms)</label><input type="range" min="50" max="2000" id="agc_release"><span class="val" id="v_agc_release">500</span></div>
-        <div class="config-row"><label>Max Gain Up (dB)</label><input type="range" min="1" max="40" id="agc_maxgain_up"><span class="val" id="v_agc_maxgain_up">20</span></div>
-        <div class="config-row"><label>Max Gain Down (dB)</label><input type="range" min="1" max="40" id="agc_maxgain_down"><span class="val" id="v_agc_maxgain_down">24</span></div>
+      <div id="dmr_gain_reencode" style="display:none">
+        <div class="config-row"><label>Re-enc Gain</label><input type="range" min="-40" max="40" id="g_dmr_reencode"><span class="val" id="v_dmr_reencode">0</span></div>
       </div>
     </div>
-    <div style="margin-top:12px;text-align:right">
-      <button class="btn btn-sm" id="btn_save" onclick="saveConfig()">Save to INI</button>
-      <span id="save_status" class="save-status"></span>
+    <div>
+      <h2 style="font-size:13px">AGC</h2>
+      <div class="config-row"><label>Enabled</label><input type="checkbox" id="agc_en"></div>
+      <div class="config-row"><label>Target (dBFS)</label><input type="range" min="-40" max="0" id="agc_target"><span class="val" id="v_agc_target">-16</span></div>
+      <div class="config-row"><label>Attack (ms)</label><input type="range" min="5" max="200" id="agc_attack"><span class="val" id="v_agc_attack">50</span></div>
+      <div class="config-row"><label>Release (ms)</label><input type="range" min="50" max="2000" id="agc_release"><span class="val" id="v_agc_release">500</span></div>
+      <div class="config-row"><label>Max Gain Up (dB)</label><input type="range" min="1" max="40" id="agc_maxgain_up"><span class="val" id="v_agc_maxgain_up">20</span></div>
+      <div class="config-row"><label>Max Gain Down (dB)</label><input type="range" min="1" max="40" id="agc_maxgain_down"><span class="val" id="v_agc_maxgain_down">24</span></div>
     </div>
+  </div>
+  <div style="margin-top:12px;text-align:right">
+    <button class="btn" id="btn_save" onclick="saveConfig()">Save to INI</button>
+    <span id="save_status" class="save-status"></span>
   </div>
 </div>
 
@@ -481,7 +431,7 @@ function render() {
   let html = '<div class="grid">';
   for (const [mod, m] of Object.entries(data.modules)) {
     const active = m.codec_in !== 'none' && m.idle < 2;
-    html += `<div class="panel ${active ? 'active' : ''}">
+    html += `<div class="card ${active ? 'active' : ''}">
       <div class="module-header">
         <span class="module-letter">Module ${mod}</span>
         <span class="codec-badge ${m.codec_in === 'none' ? 'none' : ''}">${m.codec_in}</span>
@@ -498,62 +448,48 @@ function render() {
   html += '</div>';
   document.getElementById('modules').innerHTML = html;
 
-  // Devices table
-  let rows = '';
+  // Devices
+  let dhtml = '';
   for (const d of data.devices) {
     const activeChs = d.channels ? d.channels.filter(c => c.module).length : 0;
     const totalChs = d.type === 'DV3003' ? 3 : 1;
     const dotClass = !d.online ? 'offline' : activeChs > 0 ? 'active' : 'online';
-    const statusLabel = !d.online ? 'offline' : activeChs > 0 ? 'active' : 'idle';
-    let modList = '';
+    let chInfo = '';
     if (d.channels) {
       const mods = d.channels.filter(c => c.module).map(c => c.module);
-      if (mods.length > 0) modList = `<span class="mod-tag">${mods.join(', ')}</span>`;
+      if (mods.length > 0) chInfo = ` <span class="device-active">${mods.join(',')}</span>`;
     }
-    rows += `<tr>
-      <td><span class="dot ${dotClass}"></span>${statusLabel}</td>
-      <td class="serial">${d.serial}</td>
-      <td>${d.type}</td>
-      <td>${d.role || '-'}</td>
-      <td class="num">${activeChs}/${totalChs}</td>
-      <td class="num">${d.buf_depth}</td>
-      <td>${modList || '<span class="muted">-</span>'}</td>
-      <td class="num">${d.errors > 0 ? `<span class="err-tag">${d.errors}</span>` : '0'}</td>
-    </tr>`;
+    dhtml += `<div class="device">
+      <div class="device-dot ${dotClass}"></div>
+      <strong>${d.serial}</strong>
+      <span class="device-info">${d.type} [${d.role || '?'}]</span>
+      <span class="device-buf">slots: ${activeChs}/${totalChs} buf: ${d.buf_depth}</span>${chInfo}
+      ${d.errors > 0 ? `<span class="device-err">err: ${d.errors}</span>` : ''}
+    </div>`;
   }
   // md380 software vocoder
   if (data.md380 && data.md380.available) {
     const m = data.md380;
-    const isActive = m.active_module && m.active_module.length > 0;
-    const dotClass = isActive ? 'active' : 'online';
-    const statusLabel = isActive ? 'active' : 'idle';
-    rows += `<tr>
-      <td><span class="dot ${dotClass}"></span>${statusLabel}</td>
-      <td class="serial">MD380</td>
-      <td>Software</td>
-      <td>dmr</td>
-      <td class="num">${m.reencode_active ? 'ON' : 'off'}</td>
-      <td class="num">${m.cached_streams}</td>
-      <td>${isActive ? `<span class="mod-tag">${m.active_module}</span>` : '<span class="muted">-</span>'}</td>
-      <td class="muted">enc:${m.encodes} dec:${m.decodes} re:${m.reencodes}</td>
-    </tr>`;
+    const active = m.active_module && m.active_module.length > 0;
+    const dotClass = active ? 'active' : 'online';
+    dhtml += `<div class="device">
+      <div class="device-dot ${dotClass}"></div>
+      <strong>MD380</strong>
+      <span class="device-info">Software [dmr]</span>
+      <span class="device-buf">re-enc: ${m.reencode_active ? 'ON' : 'off'} cache: ${m.cached_streams}</span>
+      ${active ? `<span class="device-active">${m.active_module}</span>` : ''}
+      <span class="device-stats">enc:${m.encodes} dec:${m.decodes} re:${m.reencodes}</span>
+    </div>`;
   }
-  document.getElementById('devices').innerHTML = rows
-    ? `<table class="tcd"><thead><tr>
-         <th>Status</th><th>Serial</th><th>Type</th><th>Role</th>
-         <th class="num">Slots</th><th class="num">Buf</th><th>Active</th><th class="num">Errors</th>
-       </tr></thead><tbody>${rows}</tbody></table>`
-    : '<div class="empty">no devices</div>';
+  document.getElementById('devices').innerHTML = dhtml || '<span class="empty">no devices</span>';
 
-  // Reflector table
+  // Reflector
   const r = data.reflector;
-  document.getElementById('reflector').innerHTML = `<table class="tcd"><thead><tr>
-      <th>Status</th><th class="num">Packets RX</th><th class="num">Packets TX</th>
-    </tr></thead><tbody><tr>
-      <td><span class="dot ${r.connected ? 'ok' : 'err'}"></span>${r.connected ? 'Connected' : 'Disconnected'}</td>
-      <td class="num">${r.pkts_rx}</td>
-      <td class="num">${r.pkts_tx}</td>
-    </tr></tbody></table>`;
+  document.getElementById('reflector').innerHTML = `<div class="ref-status">
+    <span class="ref-dot ${r.connected ? 'ok' : 'err'}"></span>
+    ${r.connected ? 'Connected' : 'Disconnected'}
+    <span class="ref-stats">RX: ${r.pkts_rx} / TX: ${r.pkts_tx}</span>
+  </div>`;
 }
 
 // Config sliders
